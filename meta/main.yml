@@ -1,6 +1,8 @@
 galaxy_info:
   author: spatterlight
+  company: mash
   role_name: wetty
+  namespace: mash
   description: Ansible role to install a Wetty instance
   platforms:
     - name: Debian
