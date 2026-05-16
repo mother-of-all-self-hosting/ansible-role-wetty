@@ -1,24 +1,28 @@
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2024 spatterIight
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-
-- block:
-    - when: wetty_enabled | bool
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
-
-    - when: wetty_enabled | bool
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+- name: Perform Wetty installation tasks
+  when: wetty_enabled | bool
   tags:
     - setup-all
     - setup-wetty
     - install-all
     - install-wetty
+  block:
+    - name: Validate Wetty configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install Wetty
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
 
-- block:
-    - when: not wetty_enabled | bool
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
+- name: Perform Wetty uninstallation tasks
+  when: not wetty_enabled | bool
   tags:
     - setup-all
     - setup-wetty
+  block:
+    - name: Uninstall Wetty
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
