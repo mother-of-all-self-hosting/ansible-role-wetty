@@ -15,13 +15,13 @@ wetty_enabled: false
 
 wetty_identifier: wetty
 
-wetty_uid: ''
-wetty_gid: ''
+wetty_uid: ""
+wetty_gid: ""
 
-wetty_version: '2.5'
+wetty_version: "2.5"
 
 # The hostname at which wetty is served.
-wetty_hostname: ''
+wetty_hostname: ""
 
 # The path at which wetty is served.
 # This value must either be `/` or not end with a slash (e.g. `/wetty`).
@@ -47,7 +47,7 @@ wetty_container_additional_networks_custom: []
 #
 # Takes an "<ip>:<port>" value (e.g. "127.0.0.1:5000"), just a port number or an empty string to not expose.
 wetty_container_http_port: 3000
-wetty_container_http_bind_port: ''
+wetty_container_http_bind_port: ""
 
 # wetty_container_labels_traefik_enabled controls whether labels to assist a Traefik reverse-proxy will be attached to the container.
 # See `../templates/labels.j2` for details.
@@ -62,7 +62,7 @@ wetty_container_labels_traefik_rule: "Host(`{{ wetty_container_labels_traefik_ho
 wetty_container_labels_traefik_priority: 0
 wetty_container_labels_traefik_entrypoints: web-secure
 wetty_container_labels_traefik_tls: "{{ wetty_container_labels_traefik_entrypoints != 'web' }}"
-wetty_container_labels_traefik_tls_certResolver: default  # noqa var-naming
+wetty_container_labels_traefik_tls_certResolver: default # noqa var-naming
 
 # Controls which additional headers to attach to all HTTP requests.
 # To add your own custom request headers, use `wetty_container_labels_traefik_additional_response_headers_custom`
@@ -83,7 +83,7 @@ wetty_container_labels_traefik_additional_response_headers_custom: {}
 # wetty_container_labels_additional_labels: |
 #   my.label=1
 #   another.label="here"
-wetty_container_labels_additional_labels: ''
+wetty_container_labels_additional_labels: ""
 
 # A list of additional "volumes" to mount in the container.
 #
@@ -102,13 +102,12 @@ wetty_container_additional_volumes: []
 
 # A list of extra arguments to pass to the container
 wetty_container_extra_arguments: []
-
-wetty_ssh_host: '127.0.0.1'
+wetty_ssh_host: "127.0.0.1"
 wetty_ssh_port: 22
 
 # List of systemd services that wetty.service depends on
 wetty_systemd_required_services_list: "{{ wetty_systemd_required_services_list_default + wetty_systemd_required_services_list_auto + wetty_systemd_required_services_list_custom }}"
-wetty_systemd_required_services_list_default: ['docker.service']
+wetty_systemd_required_services_list_default: ["docker.service"]
 wetty_systemd_required_services_list_auto: []
 wetty_systemd_required_services_list_custom: []
 
@@ -144,7 +143,7 @@ wetty_container_cleanup_command: |
   exit 1
 
 # Additional environment variables.
-wetty_environment_variables_additional_variables: ''
+wetty_environment_variables_additional_variables: ""
 
 # wetty_restart_necessary controls whether the Wetty systemd
 # service will be restarted (when true) or merely started (when false) by the
