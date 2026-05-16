@@ -158,9 +158,15 @@ wetty_hsts_preload_enabled: false
 
 # List of systemd services that the Wetty systemd service depends on
 wetty_systemd_required_services_list: "{{ wetty_systemd_required_services_list_default + wetty_systemd_required_services_list_auto + wetty_systemd_required_services_list_custom }}"
-wetty_systemd_required_services_list_default: ["docker.service"]
+wetty_systemd_required_services_list_default: "{{ [devture_systemd_docker_base_docker_service_name] if devture_systemd_docker_base_docker_service_name else [] }}"
 wetty_systemd_required_services_list_auto: []
 wetty_systemd_required_services_list_custom: []
+
+# List of systemd services that the Wetty systemd service wants
+wetty_systemd_wanted_services_list: "{{ wetty_systemd_wanted_services_list_default + wetty_systemd_wanted_services_list_auto + wetty_systemd_wanted_services_list_custom }}"
+wetty_systemd_wanted_services_list_default: []
+wetty_systemd_wanted_services_list_auto: []
+wetty_systemd_wanted_services_list_custom: []
 
 # Controls how long to wait for the container to stop gracefully before killing it.
 wetty_container_stop_grace_time_seconds: "{{ devture_systemd_docker_base_container_stop_grace_time_seconds }}"
