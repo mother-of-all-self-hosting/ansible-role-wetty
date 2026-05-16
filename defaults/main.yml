@@ -96,8 +96,10 @@ wetty_container_labels_traefik_additional_response_headers_custom: {}
 #   another.label="here"
 wetty_container_labels_additional_labels: ""
 
-# A list of extra arguments to pass to the container
-wetty_container_extra_arguments: []
+# A list of extra arguments to pass to the container (`docker create` command)
+wetty_container_extra_arguments: "{{ wetty_container_extra_arguments_auto + wetty_container_extra_arguments_custom }}"
+wetty_container_extra_arguments_auto: []
+wetty_container_extra_arguments_custom: []
 
 # List of systemd services that the Wetty systemd service depends on
 wetty_systemd_required_services_list: "{{ wetty_systemd_required_services_list_default + wetty_systemd_required_services_list_auto + wetty_systemd_required_services_list_custom }}"
