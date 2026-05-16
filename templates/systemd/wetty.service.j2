@@ -30,8 +30,8 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       --cap-drop=ALL \
       --read-only \
       --network={{ wetty_container_network }} \
-      {% if wetty_container_http_bind_port != '' %}
-      -p {{ wetty_container_http_bind_port }}:{{ wetty_container_http_port }} \
+      {% if wetty_container_http_host_bind_port != '' %}
+      -p {{ wetty_container_http_host_bind_port }}:{{ wetty_container_http_port }} \
       {% endif %}
       --env-file={{ wetty_base_path }}/env \
       --label-file={{ wetty_base_path }}/labels \
