@@ -205,9 +205,9 @@ wetty_container_cleanup_command: |
   echo "Failed to remove stale container {{ wetty_identifier }} after {{ wetty_container_cleanup_timeout_seconds }} attempts" >&2;
   exit 1
 
-wetty_ssh_host: "127.0.0.1"
+wetty_environment_variables_ssh_host: ""
 
-wetty_ssh_port: 22
+wetty_environment_variables_ssh_port: 22
 
 # Additional environment variables.
 wetty_environment_variables_additional_variables: ""

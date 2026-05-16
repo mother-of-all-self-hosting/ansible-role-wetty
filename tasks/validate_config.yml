@@ -13,6 +13,8 @@
   when: "lookup('ansible.builtin.varnames', ('^' + item.old + '$'), wantlist=True) | length > 0"
   with_items:
     - { "old": "wetty_container_http_bind_port", "new": "wetty_container_http_host_bind_port" }
+    - { "old": "wetty_ssh_host", "new": "wetty_environment_variables_ssh_host" }
+    - { "old": "wetty_ssh_port", "new": "wetty_environment_variables_ssh_port" }
     - { "old": "wetty_container_image_force_pull", "new": "<removed> (the new community.docker.docker_image_pull module handles this natively)" }
 
 - name: Fail if required Wetty settings not defined
@@ -26,6 +28,7 @@
     - wetty_hostname
     - wetty_path_prefix
     - wetty_container_network
+    - wetty_environment_variables_ssh_host
 
 - name: Run if Traefik is enabled
   when: wetty_container_labels_traefik_enabled | bool
