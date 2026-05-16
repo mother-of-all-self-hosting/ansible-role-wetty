@@ -1,32 +1,51 @@
----
+# SPDX-FileCopyrightText: 2023, 2024 Nikita Chernyi
+# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2024 Sergio Durigan Junior
+# SPDX-FileCopyrightText: 2024 spatterIight
+# SPDX-FileCopyrightText: 2025 MASH project contributors
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
+---
 # Project source code URL: https://github.com/butlerx/wetty
 
-wetty_enabled: false 
+wetty_enabled: true
 
 wetty_identifier: wetty
+wetty_base_path: "/{{ wetty_identifier }}"
 
-wetty_uid: ''
-wetty_gid: ''
+wetty_version: "2.5"
 
-wetty_version: '2.5'
+wetty_uid: ""
+wetty_gid: ""
 
-# The hostname at which wetty is served.
-wetty_hostname: ''
+# The hostname at which Wetty is served.
+wetty_hostname: ""
 
-# The path at which wetty is served.
+# The path at which Wetty is served.
 # This value must either be `/` or not end with a slash (e.g. `/wetty`).
 wetty_path_prefix: /
 
-wetty_base_path: "/{{ wetty_identifier }}"
-
 wetty_container_image: "{{ wetty_container_image_registry_prefix }}butlerx/wetty:{{ wetty_container_image_tag }}"
-wetty_container_image_registry_prefix: ghcr.io/
 wetty_container_image_tag: "{{ wetty_version }}"
-wetty_container_image_force_pull: "{{ wetty_container_image.endswith(':latest') }}"
+wetty_container_image_registry_prefix: "{{ wetty_container_image_registry_prefix_upstream }}"
+wetty_container_image_registry_prefix_upstream: "{{ wetty_container_image_registry_prefix_upstream_default }}"
+wetty_container_image_registry_prefix_upstream_default: ghcr.io/
 
 # The base container network. It will be auto-created by this role if it doesn't exist already.
 wetty_container_network: "{{ wetty_identifier }}"
+
+# Control if the container network is deleted on uninstalling.
+wetty_container_network_deletion_enabled: true
+
+# Specify how the container publishes its HTTP port (as defined by `wetty_container_http_port`).
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:2586"), or empty string to not expose.
+wetty_container_http_host_bind_port: ""
+
+# The port number in the container
+wetty_container_http_port: 3000
 
 # A list of additional container networks that the container would be connected to.
 # The role does not create these networks, so make sure they already exist.
@@ -35,11 +54,14 @@ wetty_container_additional_networks: "{{ wetty_container_additional_networks_aut
 wetty_container_additional_networks_auto: []
 wetty_container_additional_networks_custom: []
 
-# Specifies how the container publishes its HTTP port
-#
-# Takes an "<ip>:<port>" value (e.g. "127.0.0.1:5000"), just a port number or an empty string to not expose.
-wetty_container_http_port: 3000
-wetty_container_http_bind_port: ''
+# A list of additional "volumes" to mount in the container.
+# This list gets populated dynamically at runtime. You can provide a different default value,
+# if you wish to mount your own files into the container.
+# Contains definition objects like this: `{"type": "bind", "src": "/outside", "dst": "/inside", "options": "readonly"}.
+# See the `--mount` documentation for the `docker run` command.
+wetty_container_additional_volumes: "{{ wetty_container_additional_volumes_auto + wetty_container_additional_volumes_custom }}"
+wetty_container_additional_volumes_auto: []
+wetty_container_additional_volumes_custom: []
 
 # wetty_container_labels_traefik_enabled controls whether labels to assist a Traefik reverse-proxy will be attached to the container.
 # See `../templates/labels.j2` for details.
@@ -54,7 +76,10 @@ wetty_container_labels_traefik_rule: "Host(`{{ wetty_container_labels_traefik_ho
 wetty_container_labels_traefik_priority: 0
 wetty_container_labels_traefik_entrypoints: web-secure
 wetty_container_labels_traefik_tls: "{{ wetty_container_labels_traefik_entrypoints != 'web' }}"
-wetty_container_labels_traefik_tls_certResolver: default
+wetty_container_labels_traefik_tls_certResolver: default # noqa var-naming
+wetty_container_labels_traefik_middleware_basic_auth_enabled: false
+# See: https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/basicauth/
+wetty_container_labels_traefik_middleware_basic_auth_users: ""
 
 # Controls which additional headers to attach to all HTTP requests.
 # To add your own custom request headers, use `wetty_container_labels_traefik_additional_response_headers_custom`
@@ -65,7 +90,15 @@ wetty_container_labels_traefik_additional_request_headers_custom: {}
 # Controls which additional headers to attach to all HTTP responses.
 # To add your own custom response headers, use `wetty_container_labels_traefik_additional_response_headers_custom`
 wetty_container_labels_traefik_additional_response_headers: "{{ wetty_container_labels_traefik_additional_response_headers_auto | combine(wetty_container_labels_traefik_additional_response_headers_custom) }}"
-wetty_container_labels_traefik_additional_response_headers_auto: {}
+wetty_container_labels_traefik_additional_response_headers_auto: |
+  {{
+    {}
+    | combine ({'X-XSS-Protection': wetty_http_header_xss_protection} if wetty_http_header_xss_protection else {})
+    | combine ({'X-Content-Type-Options': wetty_http_header_content_type_options} if wetty_http_header_content_type_options else {})
+    | combine ({'Content-Security-Policy': wetty_http_header_content_security_policy} if wetty_http_header_content_security_policy else {})
+    | combine ({'Permissions-Policy': wetty_http_header_permissions_policy} if wetty_http_header_permissions_policy else {})
+    | combine ({'Strict-Transport-Security': wetty_http_header_strict_transport_security} if wetty_http_header_strict_transport_security and wetty_container_labels_traefik_tls else {})
+  }}
 wetty_container_labels_traefik_additional_response_headers_custom: {}
 
 # wetty_container_labels_additional_labels contains a multiline string with additional labels to add to the container label file.
@@ -75,34 +108,116 @@ wetty_container_labels_traefik_additional_response_headers_custom: {}
 # wetty_container_labels_additional_labels: |
 #   my.label=1
 #   another.label="here"
-wetty_container_labels_additional_labels: ''
+wetty_container_labels_additional_labels: ""
 
-# A list of additional "volumes" to mount in the container.
+# A list of extra arguments to pass to the container (`docker create` command)
+wetty_container_extra_arguments: "{{ wetty_container_extra_arguments_auto + wetty_container_extra_arguments_custom }}"
+wetty_container_extra_arguments_auto: []
+wetty_container_extra_arguments_custom: []
+
+# Specifies the value of the `X-XSS-Protection` header
+# Stops pages from loading when they detect reflected cross-site scripting (XSS) attacks.
 #
-# See the `--mount` documentation for the `docker run` command.
+# Learn more about it is here:
+# - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
+# - https://portswigger.net/web-security/cross-site-scripting/reflected
+wetty_http_header_xss_protection: "1; mode=block"
+
+# Specifies the value of the `X-Content-Type-Options` header.
+# See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
+wetty_http_header_content_type_options: nosniff
+
+# Specifies the value of the `Content-Security-Policy` header.
+# See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
+wetty_http_header_content_security_policy: frame-ancestors 'self'
+
+# Specifies the value of the `Permissions-Policy` header.
+# See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy
+wetty_http_header_permissions_policy: "{{ 'interest-cohort=()' if wetty_floc_optout_enabled else '' }}"
+
+# Specifies the value of the `Strict-Transport-Security` header.
+# See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
+wetty_http_header_strict_transport_security: "max-age=31536000; includeSubDomains{{ '; preload' if wetty_hsts_preload_enabled else '' }}"
+
+# Controls whether to send a "Permissions-Policy interest-cohort=();" header along with all responses
 #
-# Example:
-# wetty_container_additional_volumes:
-#   - type: bind
-#     src: /path/on/the/host
-#     dst: /data
-#   - type: bind
-#     src: /another-path/on/the/host
-#     dst: /read-only
-#     options: readonly
-wetty_container_additional_volumes: []
+# Learn more about what it is here:
+# - https://www.eff.org/deeplinks/2021/03/googles-floc-terrible-idea
+# - https://paramdeo.com/blog/opting-your-website-out-of-googles-floc-network
+# - https://amifloced.org/
+#
+# Of course, a better solution is to just stop using browsers (like Chrome), which participate in such tracking practices.
+# See: `wetty_http_header_permissions_policy`
+wetty_floc_optout_enabled: true
 
-# A list of extra arguments to pass to the container
-wetty_container_extra_arguments: []
+# Controls if HSTS preloading is enabled
+#
+# In its strongest and recommended form, the [HSTS policy](https://www.chromium.org/hsts) includes all subdomains, and
+# indicates a willingness to be "preloaded" into browsers:
+# `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
+# For more information visit:
+# - https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security
+# - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
+# - https://hstspreload.org/#opt-in
+# See: `wetty_http_header_strict_transport_security`
+wetty_hsts_preload_enabled: false
 
-wetty_ssh_host: '127.0.0.1'
-wetty_ssh_port: 22
-
-# Additional environment variables.
-wetty_environment_variables_additional_variables: ''
-
-# List of systemd services that wetty.service depends on
+# List of systemd services that the Wetty systemd service depends on
 wetty_systemd_required_services_list: "{{ wetty_systemd_required_services_list_default + wetty_systemd_required_services_list_auto + wetty_systemd_required_services_list_custom }}"
-wetty_systemd_required_services_list_default: ['docker.service']
+wetty_systemd_required_services_list_default: "{{ [devture_systemd_docker_base_docker_service_name] if devture_systemd_docker_base_docker_service_name else [] }}"
 wetty_systemd_required_services_list_auto: []
 wetty_systemd_required_services_list_custom: []
+
+# List of systemd services that the Wetty systemd service wants
+wetty_systemd_wanted_services_list: "{{ wetty_systemd_wanted_services_list_default + wetty_systemd_wanted_services_list_auto + wetty_systemd_wanted_services_list_custom }}"
+wetty_systemd_wanted_services_list_default: []
+wetty_systemd_wanted_services_list_auto: []
+wetty_systemd_wanted_services_list_custom: []
+
+# Controls how long to wait for the container to stop gracefully before killing it.
+wetty_container_stop_grace_time_seconds: "{{ devture_systemd_docker_base_container_stop_grace_time_seconds }}"
+
+# Controls how long the pre-start cleanup should wait for stale container-name release
+# before failing startup explicitly.
+wetty_container_cleanup_timeout_seconds: "{{ devture_systemd_docker_base_container_cleanup_timeout_seconds }}"
+
+# Controls the delay between pre-start cleanup retries.
+wetty_container_cleanup_retry_delay_seconds: "{{ devture_systemd_docker_base_container_cleanup_retry_delay_seconds }}"
+
+# Shell command used in the systemd pre-start phase to deterministically remove a stale
+# container and wait until Docker releases its name.
+wetty_container_cleanup_command: |
+  i=0;
+  while [ "$i" -lt {{ wetty_container_cleanup_timeout_seconds }} ]; do
+  {{ devture_systemd_docker_base_host_command_docker }} stop -t {{ wetty_container_stop_grace_time_seconds }} {{ wetty_identifier }} >/dev/null 2>&1 || true;
+  {{ devture_systemd_docker_base_host_command_docker }} rm -f {{ wetty_identifier }} >/dev/null 2>&1 || true;
+  if {{ devture_systemd_docker_base_host_command_docker }} container inspect {{ wetty_identifier }} >/dev/null 2>&1; then
+  i=$((i + 1));
+  sleep {{ wetty_container_cleanup_retry_delay_seconds }};
+  continue;
+  fi;
+  if {{ devture_systemd_docker_base_host_command_docker }} info >/dev/null 2>&1; then
+  exit 0;
+  fi;
+  echo "Failed to query Docker daemon while cleaning up {{ wetty_identifier }}" >&2;
+  exit 1;
+  done;
+  echo "Failed to remove stale container {{ wetty_identifier }} after {{ wetty_container_cleanup_timeout_seconds }} attempts" >&2;
+  exit 1
+
+wetty_environment_variables_ssh_host: ""
+
+wetty_environment_variables_ssh_port: 22
+
+# Additional environment variables.
+wetty_environment_variables_additional_variables: ""
+
+# wetty_restart_necessary controls whether the Wetty systemd
+# service will be restarted (when true) or merely started (when false) by the
+# systemd service manager role (when conditional restart is enabled).
+#
+# This value is automatically computed during installation based on whether
+# any configuration files, the systemd service file, or the container image changed.
+# The default of `false` means "no restart needed" — appropriate when the role's
+# installation tasks haven't run (e.g., due to --tags skipping them).
+wetty_restart_necessary: false

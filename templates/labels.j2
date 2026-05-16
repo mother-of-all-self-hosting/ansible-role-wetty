@@ -1,9 +1,35 @@
+{#
+SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+SPDX-FileCopyrightText: 2024 spatterIight
+SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
 {% if wetty_container_labels_traefik_enabled %}
+traefik.enable=true
+
 {% if wetty_container_labels_traefik_docker_network %}
 traefik.docker.network={{ wetty_container_labels_traefik_docker_network }}
 {% endif %}
 
 {% set middlewares = [] %}
+
+{% if wetty_container_labels_traefik_middleware_basic_auth_enabled %}
+{% set middlewares = middlewares + [wetty_identifier + '-basic-auth'] %}
+traefik.http.middlewares.{{ wetty_identifier }}-basic-auth.basicauth.users={{ wetty_container_labels_traefik_middleware_basic_auth_users }}
+{% endif %}
+
+{% if wetty_container_labels_traefik_path_prefix != '/' %}
+traefik.http.middlewares.{{ wetty_identifier }}-slashless-redirect.redirectregex.regex=^({{ wetty_container_labels_traefik_path_prefix | quote }})$
+traefik.http.middlewares.{{ wetty_identifier }}-slashless-redirect.redirectregex.replacement=${1}/
+{% set middlewares = middlewares + [wetty_identifier + '-slashless-redirect'] %}
+{% endif %}
+
+{% if wetty_container_labels_traefik_path_prefix != '/' %}
+traefik.http.middlewares.{{ wetty_identifier }}-strip-prefix.stripprefix.prefixes={{ wetty_container_labels_traefik_path_prefix }}
+{% set middlewares = middlewares + [wetty_identifier + '-strip-prefix'] %}
+{% endif %}
 
 {% if wetty_container_labels_traefik_additional_request_headers.keys() | length > 0 %}
 {% for name, value in wetty_container_labels_traefik_additional_request_headers.items() %}
@@ -19,21 +45,21 @@ traefik.http.middlewares.{{ wetty_identifier }}-add-response-headers.headers.cus
 {% set middlewares = middlewares + [wetty_identifier + '-add-response-headers'] %}
 {% endif %}
 
-traefik.enable=true
-{% endif %}
 traefik.http.routers.{{ wetty_identifier }}.rule={{ wetty_container_labels_traefik_rule }}
 {% if wetty_container_labels_traefik_priority | int > 0 %}
 traefik.http.routers.{{ wetty_identifier }}.priority={{ wetty_container_labels_traefik_priority }}
 {% endif %}
+traefik.http.routers.{{ wetty_identifier }}.service={{ wetty_identifier }}
 {% if middlewares | length > 0 %}
 traefik.http.routers.{{ wetty_identifier }}.middlewares={{ middlewares | join(',') }}
 {% endif %}
-traefik.http.routers.{{ wetty_identifier }}.service={{ wetty_identifier }}
 traefik.http.routers.{{ wetty_identifier }}.entrypoints={{ wetty_container_labels_traefik_entrypoints }}
 traefik.http.routers.{{ wetty_identifier }}.tls={{ wetty_container_labels_traefik_tls | to_json }}
 {% if wetty_container_labels_traefik_tls %}
 traefik.http.routers.{{ wetty_identifier }}.tls.certResolver={{ wetty_container_labels_traefik_tls_certResolver }}
 {% endif %}
+
 traefik.http.services.{{ wetty_identifier }}.loadbalancer.server.port={{ wetty_container_http_port }}
+{% endif %}
 
 {{ wetty_container_labels_additional_labels }}
