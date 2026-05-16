@@ -1,10 +1,11 @@
+# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2024 spatterIight
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-
-- name: Ensure Wetty paths exist
+- name: Ensure Wetty path exists
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -14,35 +15,72 @@
   with_items:
     - "{{ wetty_base_path }}"
 
-- name: Ensure Wetty support files created
+- name: Ensure Wetty support files installed
   ansible.builtin.template:
     src: "{{ role_path }}/templates/{{ item }}.j2"
     dest: "{{ wetty_base_path }}/{{ item }}"
+    mode: "0640"
     owner: "{{ wetty_uid }}"
     group: "{{ wetty_gid }}"
-    mode: 0640
   with_items:
     - env
     - labels
+  register: wetty_support_files_result
 
-- name: Ensure Wetty container image is pulled
-  community.docker.docker_image:
+- name: Ensure Wetty container image is pulled via community.docker.docker_image_pull
+  when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
+  community.docker.docker_image_pull:
     name: "{{ wetty_container_image }}"
-    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
-    force_source: "{{ wetty_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
-    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else wetty_container_image_force_pull }}"
-  register: result
+    pull: always
+  register: wetty_container_image_pull_result_ansible_module
   retries: "{{ devture_playbook_help_container_retries_count }}"
   delay: "{{ devture_playbook_help_container_retries_delay }}"
-  until: result is not failed
+  until: wetty_container_image_pull_result_ansible_module is not failed
 
-- name: Ensure Wetty container network is created
-  community.general.docker_network:
+- name: Ensure Wetty container image is pulled via ansible.builtin.command
+  when: devture_systemd_docker_base_container_image_pull_method == 'command'
+  ansible.builtin.command:
+    cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ wetty_container_image }}"
+  register: wetty_container_image_pull_result_command
+  retries: "{{ devture_playbook_help_container_retries_count }}"
+  delay: "{{ devture_playbook_help_container_retries_delay }}"
+  until: wetty_container_image_pull_result_command is not failed
+  changed_when: "'Downloaded newer image' in wetty_container_image_pull_result_command.stdout"
+
+- name: Ensure Wetty container network is created via community.docker.docker_network
+  when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
+  community.docker.docker_network:
+    enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
     name: "{{ wetty_container_network }}"
     driver: bridge
+    driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
+  register: wetty_network_creation_result
 
-- name: Ensure Wetty systemd service installed
+- name: Ensure Wetty container network is created via ansible.builtin.command
+  when: devture_systemd_docker_base_container_network_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ devture_systemd_docker_base_host_command_docker }} network create
+      {% if devture_systemd_docker_base_ipv6_enabled %}--ipv6{% endif %}
+      {{ devture_systemd_docker_base_container_networks_driver_options_string }}
+      {{ wetty_container_network }}
+  register: wetty_network_creation_result
+  changed_when: wetty_network_creation_result.rc == 0
+  failed_when: wetty_network_creation_result.rc != 0 and 'already exists' not in wetty_network_creation_result.stderr
+
+- name: Ensure Wetty systemd service is present
   ansible.builtin.template:
     src: "{{ role_path }}/templates/systemd/wetty.service.j2"
     dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ wetty_identifier }}.service"
-    mode: 0640
+    mode: "0644"
+  register: wetty_systemd_service_result
+
+- name: Determine whether Wetty needs a restart
+  ansible.builtin.set_fact:
+    wetty_restart_necessary: >-
+      {{
+        wetty_support_files_result.changed | default(false)
+        or wetty_systemd_service_result.changed | default(false)
+        or wetty_container_image_pull_result_ansible_module.changed | default(false)
+        or wetty_container_image_pull_result_command.changed | default(false)
+      }}

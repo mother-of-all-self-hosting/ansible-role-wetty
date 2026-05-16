@@ -1,4 +1,9 @@
+# SPDX-FileCopyrightText: 2023, 2024 Nikita Chernyi
+# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2024 Sergio Durigan Junior
 # SPDX-FileCopyrightText: 2024 spatterIight
+# SPDX-FileCopyrightText: 2025 MASH project contributors
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,7 +32,6 @@ wetty_base_path: "/{{ wetty_identifier }}"
 wetty_container_image: "{{ wetty_container_image_registry_prefix }}butlerx/wetty:{{ wetty_container_image_tag }}"
 wetty_container_image_registry_prefix: ghcr.io/
 wetty_container_image_tag: "{{ wetty_version }}"
-wetty_container_image_force_pull: "{{ wetty_container_image.endswith(':latest') }}"
 
 # The base container network. It will be auto-created by this role if it doesn't exist already.
 wetty_container_network: "{{ wetty_identifier }}"
@@ -110,3 +114,13 @@ wetty_systemd_required_services_list: "{{ wetty_systemd_required_services_list_d
 wetty_systemd_required_services_list_default: ['docker.service']
 wetty_systemd_required_services_list_auto: []
 wetty_systemd_required_services_list_custom: []
+
+# wetty_restart_necessary controls whether the Wetty systemd
+# service will be restarted (when true) or merely started (when false) by the
+# systemd service manager role (when conditional restart is enabled).
+#
+# This value is automatically computed during installation based on whether
+# any configuration files, the systemd service file, or the container image changed.
+# The default of `false` means "no restart needed" — appropriate when the role's
+# installation tasks haven't run (e.g., due to --tags skipping them).
+wetty_restart_necessary: false
