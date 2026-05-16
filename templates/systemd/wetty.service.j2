@@ -19,19 +19,19 @@ ExecStartPre=-{{ devture_systemd_docker_base_host_command_sh }} -c '{{ devture_s
 ExecStartPre=-{{ devture_systemd_docker_base_host_command_sh }} -c '{{ devture_systemd_docker_base_host_command_docker }} rm {{ wetty_identifier }} 2>/dev/null'
 
 ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
-			--rm \
-			--name={{ wetty_identifier }} \
-			--log-driver=none \
-			--cap-drop=ALL \
-			--read-only \
-			--network={{ wetty_container_network }} \
-			{% if wetty_container_http_bind_port != '' %}
-			-p {{ wetty_container_http_bind_port }}:{{ wetty_container_http_port }} \
-			{% endif %}
-			--env-file={{ wetty_base_path }}/env \
-			--label-file={{ wetty_base_path }}/labels \
-			--tmpfs=/tmp:rw,noexec,nosuid,size=128m \
-			{{ wetty_container_image }}
+      --rm \
+      --name={{ wetty_identifier }} \
+      --log-driver=none \
+      --cap-drop=ALL \
+      --read-only \
+      --network={{ wetty_container_network }} \
+      {% if wetty_container_http_bind_port != '' %}
+      -p {{ wetty_container_http_bind_port }}:{{ wetty_container_http_port }} \
+      {% endif %}
+      --env-file={{ wetty_base_path }}/env \
+      --label-file={{ wetty_base_path }}/labels \
+      --tmpfs=/tmp:rw,noexec,nosuid,size=128m \
+      {{ wetty_container_image }}
 
 {% for network in wetty_container_additional_networks %}
 ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} network connect {{ network }} {{ wetty_identifier }}
