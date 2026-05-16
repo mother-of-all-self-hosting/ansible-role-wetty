@@ -30,8 +30,10 @@ wetty_path_prefix: /
 wetty_base_path: "/{{ wetty_identifier }}"
 
 wetty_container_image: "{{ wetty_container_image_registry_prefix }}butlerx/wetty:{{ wetty_container_image_tag }}"
-wetty_container_image_registry_prefix: ghcr.io/
 wetty_container_image_tag: "{{ wetty_version }}"
+wetty_container_image_registry_prefix: "{{ wetty_container_image_registry_prefix_upstream }}"
+wetty_container_image_registry_prefix_upstream: "{{ wetty_container_image_registry_prefix_upstream_default }}"
+wetty_container_image_registry_prefix_upstream_default: ghcr.io/
 
 # The base container network. It will be auto-created by this role if it doesn't exist already.
 wetty_container_network: "{{ wetty_identifier }}"
