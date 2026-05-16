@@ -8,26 +8,24 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-
 # Project source code URL: https://github.com/butlerx/wetty
 
-wetty_enabled: false
+wetty_enabled: true
 
 wetty_identifier: wetty
+wetty_base_path: "/{{ wetty_identifier }}"
+
+wetty_version: "2.5"
 
 wetty_uid: ""
 wetty_gid: ""
 
-wetty_version: "2.5"
-
-# The hostname at which wetty is served.
+# The hostname at which Wetty is served.
 wetty_hostname: ""
 
-# The path at which wetty is served.
+# The path at which Wetty is served.
 # This value must either be `/` or not end with a slash (e.g. `/wetty`).
 wetty_path_prefix: /
-
-wetty_base_path: "/{{ wetty_identifier }}"
 
 wetty_container_image: "{{ wetty_container_image_registry_prefix }}butlerx/wetty:{{ wetty_container_image_tag }}"
 wetty_container_image_tag: "{{ wetty_version }}"
@@ -38,6 +36,14 @@ wetty_container_image_registry_prefix_upstream_default: ghcr.io/
 # The base container network. It will be auto-created by this role if it doesn't exist already.
 wetty_container_network: "{{ wetty_identifier }}"
 
+# Specify how the container publishes its HTTP port (as defined by `wetty_container_http_port`).
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:2586"), or empty string to not expose.
+wetty_container_http_host_bind_port: ""
+
+# The port number in the container
+wetty_container_http_port: 3000
+
 # A list of additional container networks that the container would be connected to.
 # The role does not create these networks, so make sure they already exist.
 # Use this to expose this container to another reverse proxy, which runs in a different container network.
@@ -45,11 +51,20 @@ wetty_container_additional_networks: "{{ wetty_container_additional_networks_aut
 wetty_container_additional_networks_auto: []
 wetty_container_additional_networks_custom: []
 
-# Specifies how the container publishes its HTTP port
+# A list of additional "volumes" to mount in the container.
 #
-# Takes an "<ip>:<port>" value (e.g. "127.0.0.1:5000"), just a port number or an empty string to not expose.
-wetty_container_http_port: 3000
-wetty_container_http_bind_port: ""
+# See the `--mount` documentation for the `docker run` command.
+#
+# Example:
+# wetty_container_additional_volumes:
+#   - type: bind
+#     src: /path/on/the/host
+#     dst: /data
+#   - type: bind
+#     src: /another-path/on/the/host
+#     dst: /read-only
+#     options: readonly
+wetty_container_additional_volumes: []
 
 # wetty_container_labels_traefik_enabled controls whether labels to assist a Traefik reverse-proxy will be attached to the container.
 # See `../templates/labels.j2` for details.
@@ -87,27 +102,10 @@ wetty_container_labels_traefik_additional_response_headers_custom: {}
 #   another.label="here"
 wetty_container_labels_additional_labels: ""
 
-# A list of additional "volumes" to mount in the container.
-#
-# See the `--mount` documentation for the `docker run` command.
-#
-# Example:
-# wetty_container_additional_volumes:
-#   - type: bind
-#     src: /path/on/the/host
-#     dst: /data
-#   - type: bind
-#     src: /another-path/on/the/host
-#     dst: /read-only
-#     options: readonly
-wetty_container_additional_volumes: []
-
 # A list of extra arguments to pass to the container
 wetty_container_extra_arguments: []
-wetty_ssh_host: "127.0.0.1"
-wetty_ssh_port: 22
 
-# List of systemd services that wetty.service depends on
+# List of systemd services that the Wetty systemd service depends on
 wetty_systemd_required_services_list: "{{ wetty_systemd_required_services_list_default + wetty_systemd_required_services_list_auto + wetty_systemd_required_services_list_custom }}"
 wetty_systemd_required_services_list_default: ["docker.service"]
 wetty_systemd_required_services_list_auto: []
@@ -143,6 +141,10 @@ wetty_container_cleanup_command: |
   done;
   echo "Failed to remove stale container {{ wetty_identifier }} after {{ wetty_container_cleanup_timeout_seconds }} attempts" >&2;
   exit 1
+
+wetty_ssh_host: "127.0.0.1"
+
+wetty_ssh_port: 22
 
 # Additional environment variables.
 wetty_environment_variables_additional_variables: ""
