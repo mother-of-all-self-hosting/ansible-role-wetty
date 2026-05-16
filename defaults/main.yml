@@ -6,7 +6,7 @@
 
 # Project source code URL: https://github.com/butlerx/wetty
 
-wetty_enabled: false 
+wetty_enabled: false
 
 wetty_identifier: wetty
 
@@ -58,7 +58,7 @@ wetty_container_labels_traefik_rule: "Host(`{{ wetty_container_labels_traefik_ho
 wetty_container_labels_traefik_priority: 0
 wetty_container_labels_traefik_entrypoints: web-secure
 wetty_container_labels_traefik_tls: "{{ wetty_container_labels_traefik_entrypoints != 'web' }}"
-wetty_container_labels_traefik_tls_certResolver: default
+wetty_container_labels_traefik_tls_certResolver: default  # noqa var-naming
 
 # Controls which additional headers to attach to all HTTP requests.
 # To add your own custom request headers, use `wetty_container_labels_traefik_additional_response_headers_custom`

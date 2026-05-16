@@ -5,6 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
 # Wetty Ansible role
+
 This is an [Ansible](https://www.ansible.com/) role which installs [Wetty](https://github.com/butlerx/wetty), an SSH terminal over HTTP/HTTPS, to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
 
 This role *implicitly* depends on:
