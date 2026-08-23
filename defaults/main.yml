@@ -15,7 +15,7 @@ wetty_enabled: true
 wetty_identifier: wetty
 wetty_base_path: "/{{ wetty_identifier }}"
 
-# renovate: datasource=docker depName=ghcr.io/butlerx/wetty
+# renovate: datasource=docker depName=ghcr.io/butlerx/wetty versioning=semver
 wetty_version: 3.0.0
 
 wetty_uid: ""
