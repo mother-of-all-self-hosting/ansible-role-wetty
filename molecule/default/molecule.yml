@@ -1,5 +1,6 @@
-# SPDX-FileCopyrightText: 2026 spatterlight
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 Suguru Hirahara
+# SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -31,14 +32,44 @@ provisioner:
         # Helper variables
         wetty_debug_service_enabled: false
 
+        # The SSH daemon that Wetty is pointed at. It is a container of its
+        # own on Wetty's container network, because Wetty reaches its SSH
+        # target from inside that network, and because Docker 28 refuses
+        # container-to-host-port traffic over the bridge gateway.
+        wetty_molecule_sshd_identifier: wetty-molecule-sshd
+        wetty_molecule_sshd_image: docker.io/library/alpine:3.23.4
+        wetty_molecule_ssh_username: mashtest
+        wetty_molecule_ssh_password: molecule-probe-password
+
+        # A stock, unconfigured Wetty, kept alongside the one the role
+        # installs so that the scenario can demonstrate what "Wetty answered"
+        # is worth on its own. See molecule/README.md.
+        wetty_molecule_stock_identifier: wetty-molecule-stock
+        wetty_molecule_stock_host_bind_port: 3001
+
         # Variables for Wetty
         wetty_uid: 1000
         wetty_gid: 1000
-        wetty_scheme: http
         wetty_hostname: localhost
         wetty_container_labels_traefik_enabled: false
-        wetty_container_http_host_bind_port: 3000
-        wetty_environment_variables_ssh_host: localhost
+        wetty_container_http_host_bind_port: 127.0.0.1:3000
+
+        # Deliberately not the default `/`. The stock image serves its page at
+        # `/` and 404s everywhere else, so a role whose BASE never reached the
+        # process would fail this scenario the moment it is asked for `/wetty`.
+        wetty_path_prefix: /wetty
+
+        # Deliberately not port 22, which is what Wetty falls back to on its
+        # own. The SSH daemon listens on 2222 and nothing listens on 22, so
+        # the end-to-end probe cannot succeed unless SSHPORT reached Wetty.
+        wetty_environment_variables_ssh_host: "{{ wetty_molecule_sshd_identifier }}"
+        wetty_environment_variables_ssh_port: 2222
+
+        # Proves that the passthrough for arbitrary settings works: TITLE has
+        # no dedicated variable in this role, and the title Wetty renders is
+        # its own default unless this reached the container.
+        wetty_environment_variables_additional_variables: |
+          TITLE=MASH Molecule Wetty
   env:
     # Workaround for https://github.com/ansible/molecule/issues/4391
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/..:/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/roles

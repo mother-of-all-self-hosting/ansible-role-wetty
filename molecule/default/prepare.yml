@@ -1,5 +1,6 @@
-# SPDX-FileCopyrightText: 2026 spatterlight
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 Suguru Hirahara
+# SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -27,3 +28,63 @@
       vars:
         docker_daemon_options:
           storage-driver: vfs
+
+    # Wetty resolves its SSH target by name on its own container network. The
+    # role creates that network itself and tolerates it already existing, so
+    # creating it here lets the SSH daemon be up before Wetty ever is.
+    - name: Ensure Wetty container network exists for Wetty Molecule tests
+      ansible.builtin.command:
+        cmd: docker network create wetty
+      register: wetty_molecule_network_result
+      changed_when: wetty_molecule_network_result.rc == 0
+      failed_when: >-
+        wetty_molecule_network_result.rc != 0
+        and 'already exists' not in wetty_molecule_network_result.stderr
+
+    - name: Ensure the SSH daemon image is pulled for Wetty Molecule tests
+      ansible.builtin.command:
+        cmd: "docker pull {{ wetty_molecule_sshd_image }}"
+      register: wetty_molecule_sshd_pull_result
+      changed_when: "'Downloaded newer image' in wetty_molecule_sshd_pull_result.stdout"
+      retries: 5
+      delay: 10
+      until: wetty_molecule_sshd_pull_result is not failed
+
+    # A real SSH daemon, with a real account and a real password, listening on
+    # a port that is not the one Wetty falls back to on its own. Wetty's SSH
+    # leg is the half of it that a landing-page check cannot see, so the
+    # scenario gives it something genuine to connect to.
+    - name: Ensure the SSH daemon is running for Wetty Molecule tests
+      ansible.builtin.command:
+        cmd: >-
+          docker run -d
+          --name {{ wetty_molecule_sshd_identifier }}
+          --hostname {{ wetty_molecule_sshd_identifier }}
+          --network wetty
+          {{ wetty_molecule_sshd_image }}
+          sh -c
+          'set -e;
+          apk add --no-cache openssh;
+          ssh-keygen -A;
+          adduser -D {{ wetty_molecule_ssh_username }};
+          echo "{{ wetty_molecule_ssh_username }}:{{ wetty_molecule_ssh_password }}" | chpasswd;
+          exec /usr/sbin/sshd -D -e -p 2222'
+      changed_when: true
+
+    - name: Wait for the SSH daemon to accept connections for Wetty Molecule tests
+      ansible.builtin.command:
+        cmd: >-
+          docker exec {{ wetty_molecule_sshd_identifier }}
+          nc -z 127.0.0.1 2222
+      register: wetty_molecule_sshd_ready_result
+      changed_when: false
+      failed_when: false
+      retries: 30
+      delay: 5
+      until: wetty_molecule_sshd_ready_result.rc == 0
+
+    - name: Assert the SSH daemon came up for Wetty Molecule tests
+      ansible.builtin.assert:
+        that: wetty_molecule_sshd_ready_result.rc == 0
+        fail_msg: "The Molecule SSH daemon never accepted connections on port 2222"
+        success_msg: "The Molecule SSH daemon is accepting connections on port 2222"
