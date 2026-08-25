@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+SPDX-FileCopyrightText: 2023, 2026 Slavi Pantaleev
 SPDX-FileCopyrightText: 2024 spatterIight
 SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 
@@ -36,3 +36,9 @@ just prek-install-git-pre-commit-hook
 This role supports [Molecule](https://docs.ansible.com/projects/molecule/), an Ansible testing framework designed for developing and testing Ansible collections, playbooks, and roles.
 
 Refer to [this page](./molecule/README.md) for details about how to utilize it.
+
+### Releases
+
+Releases are cut automatically. On every push to `main`, [`bin/compute-next-tag.sh`](bin/compute-next-tag.sh) derives the tag this repository should publish from `wetty_version` in [`defaults/main.yml`](defaults/main.yml) and the tags that already exist, and [the autotag workflow](.github/workflows/autotag.yml) pushes it. A new Wetty version restarts the release counter (`v3.1.0-0`); any other change to the role's behavior increments it (`v3.0.0-2`); a change that only touches documentation or CI releases nothing.
+
+Deriving the tag from the repository's state rather than from commit messages is what makes the result independent of the order in which pull requests get merged. [`bin/test-compute-next-tag.sh`](bin/test-compute-next-tag.sh) exercises it against throwaway repositories, and runs as a pre-commit hook whenever the tagger or the defaults change.
