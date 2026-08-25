@@ -1,5 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "Patch-level automerge is deliberately NOT extended here, and the reason is not risk. Wetty keeps no state at all - no database, no volumes, no migrations, and the role runs it read-only with nothing but a tmpfs - so a patch bump that broke anything would break it at startup, where the Molecule scenario runs a real command through the terminal over a real SSH leg at the pinned version and would catch it. On upgrade risk alone this role would qualify.",
+    "It is declined because there is nothing at the patch level for Renovate to see. ghcr.io/butlerx/wetty last published a versioned image tag on 2026-05-26: `3.0.0`, `3.0` and `3`. Upstream has cut v3.0.1, v3.0.2, v3.0.3, v3.0.4, v3.1.0 and v3.2.0 as GitHub releases since, and not one of them has a container image tag - checked against the full ghcr.io tag listing (79 tags, a single page) and against Docker Hub's wettyoss/wetty (80 tags); every build since 3.0.0 landed only as `main`, `latest` and `sha-<short>`. Upstream's Docker Publish job runs from the branch ref after semantic-release has run, so docker/metadata-action's `type=semver` patterns match nothing and only the branch, latest and sha tags get pushed.",
+    "Turning patch-automerge on against that would not automerge patches; it would sit inert until upstream's tagging is fixed, and then unattended-merge whatever backlog of releases had accumulated in the meantime in a single `patch` step. That is the opposite of what the preset is for. Revisit when ghcr.io/butlerx/wetty carries a versioned tag newer than 3.0.0.",
+    "`versioning=semver` on the annotation in defaults/main.yml is load-bearing and must stay. The registry carries the floating `3`, `3.0`, `2`, `2.1`, `2.4` and `2.5` tags alongside the real ones, plus `main`, `latest`, one stray `dependabot-npm_and_yarn-vm2-3.9.7` and fifty-odd `sha-<short>` tags. Strict semver rejects every one of those - `3` and `3.0` are not semver versions - and leaves only real `X.Y.Z` releases. Without it Renovate would follow the floating major, which is a silent auto-upgrade channel with nothing reviewable and no fixed tag to pin."
+  ],
   "extends": [
     "github>mother-of-all-self-hosting/renovate-config#v1.0.0"
   ]
