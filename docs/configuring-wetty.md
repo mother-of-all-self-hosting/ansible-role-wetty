@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2020 Chris van Dijk
 SPDX-FileCopyrightText: 2020 Dominik Zajac
 SPDX-FileCopyrightText: 2020 Mickaël Cornière
 SPDX-FileCopyrightText: 2020-2024 MDAD project contributors
-SPDX-FileCopyrightText: 2020-2025 Slavi Pantaleev
+SPDX-FileCopyrightText: 2020-2026 Slavi Pantaleev
 SPDX-FileCopyrightText: 2022 François Darveau
 SPDX-FileCopyrightText: 2022 Julian Foad
 SPDX-FileCopyrightText: 2022 Warren Bailey
@@ -66,6 +66,11 @@ It is also necessary to set a hostname of the SSH server which the Wetty instanc
 wetty_environment_variables_ssh_host: YOUR_SSH_SERVER_HOSTNAME_HERE
 ```
 
+>[!WARNING]
+> Do not set this to `localhost`, `127.0.0.1` or `0.0.0.0`. Those values do not mean "the server this is running on" — Wetty runs in a container, so they mean the container itself. Worse, Wetty treats them as a special case: when it is running as `root` and its SSH host is one of those three names, it skips SSH entirely and offers a login prompt for the container it lives in. The result is a terminal that nobody can log in to, presented without any error.
+>
+> Use the hostname or the container-network name of the machine you actually want to reach.
+
 ### Configuring SSH port for Wetty (optional)
 
 By default Wetty is configured to connect to the port 22 of the SSH server. If you wish to have the instance connect to another port, add the following configuration to your `vars.yml` file and adjust the port as you see fit.
@@ -100,6 +105,32 @@ To get started, open the URL with a web browser, and log in to the server with t
 
 >[!NOTE]
 > Wetty only supports password authentication, so if the SSH daemon at `wetty_environment_variables_ssh_host` only allows pubkey authentication you will not be able to connect.
+
+## Security considerations
+
+Wetty is, by construction, a web page that opens a shell. It is worth being explicit about what that means before putting one on a public hostname.
+
+**Wetty has no accounts of its own.** It does not authenticate anybody. Everything it does with a visitor's credentials, it hands straight to the SSH daemon at `wetty_environment_variables_ssh_host`, and that daemon is the only thing standing between the open internet and a shell. Anyone who can reach the URL gets a password prompt for your SSH server, so:
+
+- **the SSH daemon must actually require a password.** A target that accepts an empty password, or that has an account with a guessable one, is a target that anyone with the URL can log in to.
+- **there is no rate limiting.** Wetty does not throttle or lock out failed attempts, so the page is a password-guessing oracle against your SSH daemon that works over HTTPS.
+- **`fail2ban` and similar tools will not help much.** Every attempt reaches `sshd` from Wetty's container address, not from the visitor's, so a ban either does nothing useful or takes Wetty itself offline for everybody.
+
+If the instance does not need to be public, put an additional layer in front of it:
+
+```yaml
+wetty_container_labels_traefik_middleware_basic_auth_enabled: true
+
+# See https://doc.traefik.io/traefik/middlewares/http/basicauth/#users for details.
+wetty_container_labels_traefik_middleware_basic_auth_users: ""
+```
+
+A few more properties of Wetty itself are worth knowing about. None of them are configurable through this role, because Wetty does not expose settings for them:
+
+- **The SSH host key is not verified.** Wetty connects with `StrictHostKeyChecking=no` and `UserKnownHostsFile=/dev/null`, so it trusts whatever host key it is offered, every time. On a link that leaves your own machine or network, that connection can be intercepted without the terminal noticing.
+- **A `remote-user` request header selects the SSH username.** Wetty trusts that header if it is present, so make sure nothing in front of it lets a visitor set it — reverse proxies normally set such headers, they do not usually strip them on the way in.
+- **A `pass` query parameter in the URL is accepted as the SSH password.** Visiting `https://example.com/wetty?pass=…` logs straight in. That is convenient and it is also a password written into browser history, into `Referer` headers and into every access log along the way. Prefer typing it into the terminal.
+- **Prometheus metrics are served without authentication**, at `metrics` under the configured path prefix (`https://example.com/wetty/metrics` for the configuration above, or `https://example.com/metrics` when `wetty_path_prefix` is `/`).
 
 ## Troubleshooting
 
