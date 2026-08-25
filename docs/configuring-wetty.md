@@ -129,7 +129,7 @@ A few more properties of Wetty itself are worth knowing about. None of them are 
 
 - **The SSH host key is not verified.** Wetty connects with `StrictHostKeyChecking=no` and `UserKnownHostsFile=/dev/null`, so it trusts whatever host key it is offered, every time. On a link that leaves your own machine or network, that connection can be intercepted without the terminal noticing.
 - **A `remote-user` request header selects the SSH username.** Wetty trusts that header if it is present, so make sure nothing in front of it lets a visitor set it — reverse proxies normally set such headers, they do not usually strip them on the way in.
-- **A `pass` query parameter in the URL is accepted as the SSH password.** Visiting `https://example.com/wetty?pass=…` logs straight in. That is convenient and it is also a password written into browser history, into `Referer` headers and into every access log along the way. Prefer typing it into the terminal.
+- **Credentials can travel in the URL.** Wetty serves an `ssh/<username>` route under its path prefix and accepts a `pass` query parameter as the SSH password, so `https://example.com/wetty/ssh/root?pass=…` is a complete login in a single link, with nothing typed. That is convenient, and it is also a password written into browser history, into `Referer` headers, and into every access log along the way. Prefer typing credentials into the terminal.
 - **Prometheus metrics are served without authentication**, at `metrics` under the configured path prefix (`https://example.com/wetty/metrics` for the configuration above, or `https://example.com/metrics` when `wetty_path_prefix` is `/`).
 
 ## Troubleshooting
