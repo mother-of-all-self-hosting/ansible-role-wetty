@@ -20,17 +20,19 @@ traefik.docker.network={{ wetty_container_labels_traefik_docker_network }}
 traefik.http.middlewares.{{ wetty_identifier }}-basic-auth.basicauth.users={{ wetty_container_labels_traefik_middleware_basic_auth_users }}
 {% endif %}
 
-{% if wetty_container_labels_traefik_path_prefix != '/' %}
-traefik.http.middlewares.{{ wetty_identifier }}-slashless-redirect.redirectregex.regex=^({{ wetty_container_labels_traefik_path_prefix | quote }})$
-traefik.http.middlewares.{{ wetty_identifier }}-slashless-redirect.redirectregex.replacement=${1}/
-{% set middlewares = middlewares + [wetty_identifier + '-slashless-redirect'] %}
-{% endif %}
+{#
+Wetty is told its own path prefix through `BASE` (see `../templates/env.j2`)
+and serves everything - the page, the assets and the Socket.IO endpoint -
+underneath it. It must therefore receive the request path as sent.
 
-{% if wetty_container_labels_traefik_path_prefix != '/' %}
-traefik.http.middlewares.{{ wetty_identifier }}-strip-prefix.stripprefix.prefixes={{ wetty_container_labels_traefik_path_prefix }}
-{% set middlewares = middlewares + [wetty_identifier + '-strip-prefix'] %}
-{% endif %}
+Neither of the two middlewares that usually accompany a path prefix in this
+fleet belongs here:
 
+- stripping the prefix would leave Wetty looking for `/`, where it serves
+  nothing, so the whole service answers 404
+- redirecting the slashless form to a trailing slash would fight Wetty's own
+  redirect, which strips a trailing path slash back off again
+#}
 {% if wetty_container_labels_traefik_additional_request_headers.keys() | length > 0 %}
 {% for name, value in wetty_container_labels_traefik_additional_request_headers.items() %}
 traefik.http.middlewares.{{ wetty_identifier }}-add-request-headers.headers.customrequestheaders.{{ name }}={{ value }}
