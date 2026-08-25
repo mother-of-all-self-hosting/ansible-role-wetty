@@ -52,7 +52,7 @@
 
     - name: Inspect the Wetty container
       ansible.builtin.command:
-        cmd: docker inspect wetty
+        cmd: docker container inspect wetty
       register: wetty_container_inspect
       changed_when: false
       retries: 36
