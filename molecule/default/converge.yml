@@ -29,7 +29,13 @@
       ansible.builtin.systemd_service:
         daemon_reload: true
 
+    # `state: started` alone leaves an already-running container in place, and
+    # a container keeps the labels and the environment file it was created
+    # with - so a re-converge after a configuration change would go on testing
+    # the container built from the previous one. The role works out whether
+    # anything it installed actually changed; this is a playbook honoring it,
+    # the same way `com.devture.ansible.role.systemd_service_manager` does.
     - name: Ensure Wetty systemd service is started
       ansible.builtin.systemd_service:
         name: wetty.service
-        state: started
+        state: "{{ 'restarted' if wetty_restart_necessary | bool else 'started' }}"
