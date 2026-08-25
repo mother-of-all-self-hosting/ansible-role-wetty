@@ -12,6 +12,9 @@
 
   vars:
     wetty_molecule_url: "http://127.0.0.1:3000{{ wetty_path_prefix }}"
+    # Traefik routes on the hostname as well as the path, so this has to be
+    # reached by name rather than by address.
+    wetty_molecule_traefik_url: "http://{{ wetty_hostname }}:{{ wetty_molecule_traefik_host_bind_port }}{{ wetty_path_prefix }}"
     wetty_molecule_stock_base: "http://127.0.0.1:{{ wetty_molecule_stock_host_bind_port }}"
 
   tasks:
@@ -289,6 +292,84 @@
           Wetty's terminal and its output came back.
 
     # ------------------------------------------------------------------
+    # Through Traefik.
+    #
+    # How a reverse proxy has to forward a path prefix is a property of the
+    # application behind it, and getting it wrong is invisible until someone
+    # loads the page: Wetty is told its prefix through BASE and serves
+    # everything underneath it, so a proxy that strips the prefix leaves it
+    # looking for `/`, where it serves nothing, and the whole service answers
+    # 404. Nothing about the labels themselves says which of the two it is,
+    # so a real Traefik configured by nothing but those labels is asked.
+    # ------------------------------------------------------------------
+
+    - name: Wait for Traefik to route Wetty at the configured path prefix
+      ansible.builtin.uri:
+        url: "{{ wetty_molecule_traefik_url }}"
+        method: GET
+        status_code: [200, 404, 502]
+        follow_redirects: none
+        return_content: true
+      register: wetty_molecule_traefik_page
+      until: wetty_molecule_traefik_page.status == 200
+      retries: 24
+      delay: 5
+      failed_when: false
+
+    - name: Ask Traefik for one of Wetty's assets
+      ansible.builtin.uri:
+        url: "{{ wetty_molecule_traefik_url }}/client/wetty.css"
+        method: GET
+        status_code: [200, 404, 502]
+        follow_redirects: none
+      register: wetty_molecule_traefik_asset
+      failed_when: false
+
+    - name: Assert Traefik serves Wetty under its path prefix
+      ansible.builtin.assert:
+        that:
+          - wetty_molecule_traefik_page.status == 200
+          - "'<title>MASH Molecule Wetty</title>' in (wetty_molecule_traefik_page.content | default(''))"
+          - wetty_molecule_traefik_asset.status == 200
+        fail_msg: >-
+          Traefik answered {{ wetty_molecule_traefik_page.status }} for the
+          page and {{ wetty_molecule_traefik_asset.status }} for an asset
+          under {{ wetty_path_prefix }}. The labels the role attaches are
+          rewriting the request path into something Wetty does not serve.
+        success_msg: >-
+          Traefik forwards {{ wetty_path_prefix }} to Wetty unchanged, and
+          both the page and its assets come back.
+
+    # The terminal again, this time through the reverse proxy - which is where
+    # the WebSocket upgrade and the Socket.IO path under the prefix have to
+    # survive as well as the page does.
+    - name: Run a command through Wetty's terminal via Traefik
+      ansible.builtin.script:
+        cmd: >-
+          files/wetty-terminal-probe.py
+          --url {{ wetty_molecule_traefik_url | quote }}
+          --user {{ wetty_molecule_ssh_username | quote }}
+          --password {{ wetty_molecule_ssh_password | quote }}
+          --command 'id -un; hostname'
+          --expect {{ wetty_molecule_sshd_identifier | quote }}
+          --timeout 90
+        executable: python3
+      register: wetty_molecule_traefik_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Assert the terminal works through Traefik
+      ansible.builtin.assert:
+        that: wetty_molecule_traefik_probe.rc == 0
+        fail_msg: >-
+          A command could not be run through Wetty's terminal via Traefik,
+          even though it works on the published port - so the WebSocket does
+          not survive the reverse proxy the role's labels describe.
+        success_msg: >-
+          A command ran on {{ wetty_molecule_sshd_identifier }} through
+          Wetty's terminal via Traefik.
+
+    # ------------------------------------------------------------------
     # `Restart=always` means the unit reads `active` even while the container
     # is crash-looping, so the unit's own restart counter is what settles it,
     # checked after everything else has had time to provoke a crash.
@@ -319,3 +400,4 @@
           - "served at {{ wetty_path_prefix }}, 404 at /"
           - "version: {{ (wetty_molecule_package_version.stdout | default('')) | trim }}"
           - "terminal: {{ (wetty_molecule_probe.stdout | default('')) | trim }}"
+          - "through Traefik: {{ (wetty_molecule_traefik_probe.stdout | default('')) | trim }}"

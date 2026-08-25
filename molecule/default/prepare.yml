@@ -89,3 +89,30 @@
         that: wetty_molecule_sshd_ready_result.rc == 0
         fail_msg: "The Molecule SSH daemon never accepted connections on port 2222"
         success_msg: "The Molecule SSH daemon is accepting connections on port 2222"
+
+    - name: Ensure the Traefik image is pulled for Wetty Molecule tests
+      ansible.builtin.command:
+        cmd: "docker pull {{ wetty_molecule_traefik_image }}"
+      register: wetty_molecule_traefik_pull_result
+      changed_when: "'Downloaded newer image' in wetty_molecule_traefik_pull_result.stdout"
+      retries: 5
+      delay: 10
+      until: wetty_molecule_traefik_pull_result is not failed
+
+    # Configured only by the Docker provider, so that everything it does to a
+    # request comes from the labels the role attaches and from nothing else.
+    # It is started before Wetty exists; the provider picks the container up
+    # from the Docker event stream when it appears.
+    - name: Ensure Traefik is running for Wetty Molecule tests
+      ansible.builtin.command:
+        cmd: >-
+          docker run -d
+          --name {{ wetty_molecule_traefik_identifier }}
+          --network wetty
+          -p 127.0.0.1:{{ wetty_molecule_traefik_host_bind_port }}:80
+          -v /var/run/docker.sock:/var/run/docker.sock:ro
+          {{ wetty_molecule_traefik_image }}
+          --providers.docker=true
+          --providers.docker.exposedByDefault=false
+          --entrypoints.web.address=:80
+      changed_when: true

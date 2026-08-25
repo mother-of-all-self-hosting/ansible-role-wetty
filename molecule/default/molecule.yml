@@ -47,12 +47,25 @@ provisioner:
         wetty_molecule_stock_identifier: wetty-molecule-stock
         wetty_molecule_stock_host_bind_port: 3001
 
+        # A real Traefik, configured by nothing but the container labels the
+        # role attaches. Wetty is served under a path prefix, and how a
+        # reverse proxy has to forward that prefix is a property of the app -
+        # so the labels have to be exercised, not just rendered.
+        wetty_molecule_traefik_identifier: wetty-molecule-traefik
+        wetty_molecule_traefik_image: docker.io/library/traefik:v3.7.11
+        wetty_molecule_traefik_host_bind_port: 8080
+
         # Variables for Wetty
         wetty_uid: 1000
         wetty_gid: 1000
         wetty_hostname: localhost
-        wetty_container_labels_traefik_enabled: false
         wetty_container_http_host_bind_port: 127.0.0.1:3000
+
+        # `web` rather than the default `web-secure`, which also turns
+        # `wetty_container_labels_traefik_tls` off - there is no certificate
+        # resolver in this scenario.
+        wetty_container_labels_traefik_enabled: true
+        wetty_container_labels_traefik_entrypoints: web
 
         # Deliberately not the default `/`. The stock image serves its page at
         # `/` and 404s everywhere else, so a role whose BASE never reached the

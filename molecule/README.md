@@ -64,6 +64,8 @@ Only then does it look at the instance the role installed, and check that:
 
 That last one is the point of the scenario. [`files/wetty-terminal-probe.py`](default/files/wetty-terminal-probe.py) speaks the browser's half of the protocol using nothing but the Python standard library: it opens the Socket.IO WebSocket, answers Wetty's own username prompt, answers the SSH daemon's password prompt, runs a command and reads the output back. It passes only if the web layer, the WebSocket and the SSH leg all work — and only if both `SSHHOST` and `SSHPORT` arrived, because nothing is listening on the port Wetty defaults to.
 
+Then all of it again through a real Traefik, configured by nothing but the container labels the role attaches. How a reverse proxy has to forward a path prefix is a property of the application behind it, and nothing about a rendered label file says which way round it is — an app that is told its own prefix, as Wetty is through `BASE`, must receive the path unchanged, while one that is not needs the prefix stripped. Getting that wrong is invisible everywhere except in a browser, where the whole service answers 404. So the scenario asks Traefik for the page, for one of Wetty's assets, and for a terminal session, and expects all three.
+
 Finally, because `Restart=always` makes a crash-looping container look like a healthy unit, the scenario ends by asserting that `wetty.service` has not restarted at all.
 
 ## Running
