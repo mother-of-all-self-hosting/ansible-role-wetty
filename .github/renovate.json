@@ -7,6 +7,6 @@
     "`versioning=semver` on the annotation in defaults/main.yml is load-bearing and must stay. The registry carries the floating `3`, `3.0`, `2`, `2.1`, `2.4` and `2.5` tags alongside the real ones, plus `main`, `latest`, one stray `dependabot-npm_and_yarn-vm2-3.9.7` and fifty-odd `sha-<short>` tags. Strict semver rejects every one of those - `3` and `3.0` are not semver versions - and leaves only real `X.Y.Z` releases. Without it Renovate would follow the floating major, which is a silent auto-upgrade channel with nothing reviewable and no fixed tag to pin."
   ],
   "extends": [
-    "github>mother-of-all-self-hosting/renovate-config#v1.0.0"
+    "github>mother-of-all-self-hosting/renovate-config#v1.1.0"
   ]
 }
