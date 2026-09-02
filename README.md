@@ -39,6 +39,6 @@ Refer to [this page](./molecule/README.md) for details about how to utilize it.
 
 ### Releases
 
-Releases are cut automatically. On every push to `main`, [`bin/compute-next-tag.sh`](bin/compute-next-tag.sh) derives the tag this repository should publish from `wetty_version` in [`defaults/main.yml`](defaults/main.yml) and the tags that already exist, and [the autotag workflow](.github/workflows/autotag.yml) pushes it. A new Wetty version restarts the release counter (`v3.1.0-0`); any other change to the role's behavior increments it (`v3.0.0-2`); a change that only touches documentation or CI releases nothing.
+Tags are created by [`.github/workflows/autotag.yml`](.github/workflows/autotag.yml), which asks [`bin/compute-next-tag.sh`](bin/compute-next-tag.sh) what the commit on `main` should be released as. The answer comes from the Wetty version pinned in [`defaults/main.yml`](defaults/main.yml) and from the tags that already exist, so a commit that only touches documentation or CI is not released at all, and any change to the role itself is — without waiting for a dependency bump to carry it along.
 
-Deriving the tag from the repository's state rather than from commit messages is what makes the result independent of the order in which pull requests get merged. [`bin/test-compute-next-tag.sh`](bin/test-compute-next-tag.sh) exercises it against throwaway repositories, and runs as a pre-commit hook whenever the tagger or the defaults change.
+[`bin/test-compute-next-tag.sh`](bin/test-compute-next-tag.sh) exercises that script against throwaway repositories, and runs as a prek hook. and runs as a pre-commit hook whenever the tagger or `defaults/main.yml` changes.
