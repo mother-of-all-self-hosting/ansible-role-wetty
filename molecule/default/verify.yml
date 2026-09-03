@@ -393,11 +393,11 @@
           is crash-looping behind a unit that reports itself active.
         success_msg: "wetty.service has been up without a restart throughout."
 
-    - name: Show what was verified
+    - name: Show the Wetty verification summary
       ansible.builtin.debug:
         msg:
-          - "systemd: {{ wetty_molecule_final_state.status.ActiveState }}, restarts: {{ wetty_molecule_final_state.status.NRestarts }}"
-          - "served at {{ wetty_path_prefix }}, 404 at /"
-          - "version: {{ (wetty_molecule_package_version.stdout | default('')) | trim }}"
-          - "terminal: {{ (wetty_molecule_probe.stdout | default('')) | trim }}"
-          - "through Traefik: {{ (wetty_molecule_traefik_probe.stdout | default('')) | trim }}"
+          - "Wetty systemd: {{ wetty_molecule_final_state.status.ActiveState }}, restarts: {{ wetty_molecule_final_state.status.NRestarts }}"
+          - "Wetty served at {{ wetty_path_prefix }}, 404 at /"
+          - "Wetty version: {{ (wetty_molecule_package_version.stdout | default('')) | trim }}"
+          - "Wetty terminal: {{ (wetty_molecule_probe.stdout | default('')) | trim }}"
+          - "Wetty through Traefik: {{ (wetty_molecule_traefik_probe.stdout | default('')) | trim }}"
