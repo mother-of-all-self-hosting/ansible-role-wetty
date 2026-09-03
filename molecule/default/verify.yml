@@ -240,21 +240,14 @@
       changed_when: false
       failed_when: false
 
-    - name: Assert the running Wetty is the version the role pins
+    - name: Assert the running Wetty is the version this role installs
       ansible.builtin.assert:
         that:
           - wetty_molecule_container.Config.Image == 'ghcr.io/butlerx/wetty:' ~ wetty_molecule_role_defaults.wetty_version
           - wetty_molecule_container.Config.Labels['org.opencontainers.image.version'] == wetty_molecule_role_defaults.wetty_version
           - (wetty_molecule_package_version.stdout | default('')) | trim == wetty_molecule_role_defaults.wetty_version
-        fail_msg: >-
-          The role pins {{ wetty_molecule_role_defaults.wetty_version }}, but
-          the container runs image
-          {{ wetty_molecule_container.Config.Image }}, labelled
-          {{ wetty_molecule_container.Config.Labels['org.opencontainers.image.version'] | default('nothing') }},
-          reporting {{ (wetty_molecule_package_version.stdout | default('nothing')) | trim }}.
-        success_msg: >-
-          The running Wetty is {{ wetty_molecule_role_defaults.wetty_version }},
-          the version `wetty_version` pins.
+        fail_msg: "Wetty reports {{ (wetty_molecule_package_version.stdout | default('none')) | trim }}, expected {{ wetty_molecule_role_defaults.wetty_version }}"
+        success_msg: "Wetty reports {{ wetty_molecule_package_version.stdout | trim }}"
 
     # ------------------------------------------------------------------
     # The whole chain, end to end.
