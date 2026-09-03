@@ -78,7 +78,7 @@ wetty_container_labels_traefik_priority: 0
 wetty_container_labels_traefik_entrypoints: web-secure
 wetty_container_labels_traefik_tls: "{{ wetty_container_labels_traefik_entrypoints != 'web' }}"
 wetty_container_labels_traefik_tls_certResolver: default # noqa var-naming
-wetty_container_labels_traefik_middleware_basic_auth_enabled: false
+wetty_container_labels_traefik_middleware_basic_auth_enabled: true
 # See: https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/basicauth/
 wetty_container_labels_traefik_middleware_basic_auth_users: ""
 

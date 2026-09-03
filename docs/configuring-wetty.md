@@ -79,6 +79,18 @@ By default Wetty is configured to connect to the port 22 of the SSH server. If y
 wetty_environment_variables_ssh_port: 222
 ```
 
+### Configuring HTTP Basic authentication
+
+Wetty is, by construction, a web page that opens a shell. Since there does not exist an authentication system on the web interface, this role is configured to enable the HTTP Basic authentication on Traefik by default, considering the nature of the service. See [this page](https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/basicauth/) on the Traefik's documentation for details.
+
+You can use `htpasswd` to generate the user and password pair, which needs to be set to `mailcatcher_container_labels_traefik_middleware_basic_auth_users`.
+
+If another authentication service is used or authentication is not required at all, you can disable it by adding the following configuration to your `vars.yml` file:
+
+```yaml
+wetty_container_labels_traefik_middleware_basic_auth_enabled: false
+```
+
 ### Extending the configuration
 
 There are some additional things you may wish to configure about the service.
