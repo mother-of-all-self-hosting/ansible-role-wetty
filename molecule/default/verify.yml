@@ -397,7 +397,7 @@
       ansible.builtin.debug:
         msg:
           - "Wetty systemd: {{ wetty_molecule_final_state.status.ActiveState }}, restarts: {{ wetty_molecule_final_state.status.NRestarts }}"
-          - "Wetty served at {{ wetty_path_prefix }}, 404 at /"
           - "Wetty version: {{ (wetty_molecule_package_version.stdout | default('')) | trim }}"
+          - "Wetty served at {{ wetty_path_prefix }}, 404 at /"
           - "Wetty terminal: {{ (wetty_molecule_probe.stdout | default('')) | trim }}"
           - "Wetty through Traefik: {{ (wetty_molecule_traefik_probe.stdout | default('')) | trim }}"
