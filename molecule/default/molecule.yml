@@ -60,6 +60,7 @@ provisioner:
         wetty_gid: 1000
         wetty_hostname: localhost
         wetty_container_http_host_bind_port: 127.0.0.1:3000
+        wetty_container_labels_traefik_middleware_basic_auth_enabled: false
 
         # `web` rather than the default `web-secure`, which also turns
         # `wetty_container_labels_traefik_tls` off - there is no certificate
