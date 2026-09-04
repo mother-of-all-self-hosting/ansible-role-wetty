@@ -18,14 +18,13 @@
     wetty_molecule_stock_base: "http://127.0.0.1:{{ wetty_molecule_stock_host_bind_port }}"
 
   tasks:
-    # The role's own defaults are the only honest source for the version the
-    # running container is expected to report. Reading them here, rather than
-    # repeating the number in the scenario, is what ties this assertion to the
-    # literal that Renovate edits.
-    - name: Read the Wetty role defaults
+    # The role is not included in this playbook, so its defaults are not in
+    # scope. Reading defaults/main.yml directly ties the version assertion
+    # below.
+    - name: Load the role defaults
       ansible.builtin.include_vars:
         file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
-        name: wetty_molecule_role_defaults
+        name: wetty_defaults
 
     - name: Wait for Wetty service to become active (up to 180s)
       ansible.builtin.systemd:
@@ -243,10 +242,10 @@
     - name: Assert the running Wetty is the version this role installs
       ansible.builtin.assert:
         that:
-          - wetty_molecule_container.Config.Image == 'ghcr.io/butlerx/wetty:' ~ wetty_molecule_role_defaults.wetty_version
-          - wetty_molecule_container.Config.Labels['org.opencontainers.image.version'] == wetty_molecule_role_defaults.wetty_version
-          - (wetty_molecule_package_version.stdout | default('')) | trim == wetty_molecule_role_defaults.wetty_version
-        fail_msg: "Wetty reports {{ (wetty_molecule_package_version.stdout | default('none')) | trim }}, expected {{ wetty_molecule_role_defaults.wetty_version }}"
+          - wetty_molecule_container.Config.Image == 'ghcr.io/butlerx/wetty:' ~ wetty_defaults.wetty_version
+          - wetty_molecule_container.Config.Labels['org.opencontainers.image.version'] == wetty_defaults.wetty_version
+          - (wetty_molecule_package_version.stdout | default('')) | trim == wetty_defaults.wetty_version
+        fail_msg: "Wetty reports {{ (wetty_molecule_package_version.stdout | default('none')) | trim }}, expected {{ wetty_defaults.wetty_version }}"
         success_msg: "Wetty reports {{ wetty_molecule_package_version.stdout | trim }}"
 
     # ------------------------------------------------------------------
