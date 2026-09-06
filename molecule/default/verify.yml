@@ -52,15 +52,15 @@
     - name: Inspect the Wetty container
       ansible.builtin.command:
         cmd: docker container inspect wetty
-      register: wetty_container_inspect
+      register: wetty_container_raw
       changed_when: false
       retries: 36
       delay: 5
-      until: wetty_container_inspect is not failed
+      until: wetty_container_raw is not failed
 
     - name: Record what the Wetty container is running
       ansible.builtin.set_fact:
-        wetty_molecule_container: "{{ (wetty_container_inspect.stdout | from_json)[0] }}"
+        wetty_molecule_container: "{{ (wetty_container_raw.stdout | from_json)[0] }}"
 
     # ------------------------------------------------------------------
     # Negative controls.
