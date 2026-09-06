@@ -60,7 +60,7 @@
 
     - name: Record what the Wetty container is running
       ansible.builtin.set_fact:
-        wetty_molecule_container: "{{ (wetty_container_raw.stdout | from_json)[0] }}"
+        wetty_container: "{{ (wetty_container_raw.stdout | from_json)[0] }}"
 
     # ------------------------------------------------------------------
     # Negative controls.
@@ -78,7 +78,7 @@
           docker run -d
           --name {{ wetty_molecule_stock_identifier }}
           -p 127.0.0.1:{{ wetty_molecule_stock_host_bind_port }}:3000
-          {{ wetty_molecule_container.Config.Image }}
+          {{ wetty_container.Config.Image }}
       changed_when: true
 
     # Every wait below judges nothing itself: it polls, gives up quietly, and
@@ -242,8 +242,8 @@
     - name: Assert the running Wetty is the version this role installs
       ansible.builtin.assert:
         that:
-          - wetty_molecule_container.Config.Image == 'ghcr.io/butlerx/wetty:' ~ wetty_defaults.wetty_version
-          - wetty_molecule_container.Config.Labels['org.opencontainers.image.version'] == wetty_defaults.wetty_version
+          - wetty_container.Config.Image == 'ghcr.io/butlerx/wetty:' ~ wetty_defaults.wetty_version
+          - wetty_container.Config.Labels['org.opencontainers.image.version'] == wetty_defaults.wetty_version
           - (wetty_molecule_package_version.stdout | default('')) | trim == wetty_defaults.wetty_version
         fail_msg: "Wetty reports {{ (wetty_molecule_package_version.stdout | default('none')) | trim }}, expected {{ wetty_defaults.wetty_version }}"
         success_msg: "Wetty reports {{ wetty_molecule_package_version.stdout | trim }}"
