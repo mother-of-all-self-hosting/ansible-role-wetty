@@ -26,8 +26,8 @@
         file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
         name: wetty_defaults
 
-    - name: Wait for Wetty service to become active (up to 180s)
-      ansible.builtin.systemd:
+    - name: Wait for the Wetty systemd service to become active (up to 180s)
+      ansible.builtin.systemd_service:
         name: wetty.service
       register: wetty_service
       until: wetty_service.status.ActiveState == 'active'
@@ -35,15 +35,16 @@
       delay: 5
       failed_when: false
 
-    - name: Assert the Wetty systemd unit came up
+    # `Restart=always` in the systemd unit means that even a container which crashes
+    # and gets restarted reads as active here, so this is a precondition rather than
+    # a result.
+    - name: Assert the Wetty systemd service is active
       ansible.builtin.assert:
         that: wetty_service.status.ActiveState == 'active'
-        fail_msg: "wetty.service is {{ wetty_service.status.ActiveState }}, not active"
-        success_msg: >-
-          wetty.service is active - which under `Restart=always` says very
-          little on its own, so everything below re-establishes it properly.
+        fail_msg: "wetty.service is not active ({{ wetty_service.status.ActiveState }})"
+        success_msg: "wetty.service is active"
 
-    - name: Retrieve Wetty service log for debugging
+    - name: Retrieve the Wetty systemd service log for debugging
       when: wetty_debug_service_enabled | bool
       ansible.builtin.command:
         cmd: journalctl -xeu wetty.service
@@ -368,7 +369,7 @@
     # ------------------------------------------------------------------
 
     - name: Read how many times Wetty has been restarted
-      ansible.builtin.systemd:
+      ansible.builtin.systemd_service:
         name: wetty.service
       register: wetty_molecule_final_state
       changed_when: false
