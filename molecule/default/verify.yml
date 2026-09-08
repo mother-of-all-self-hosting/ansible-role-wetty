@@ -47,7 +47,7 @@
     - name: Retrieve the Wetty systemd service log for debugging
       when: wetty_debug_service_enabled | bool
       ansible.builtin.command:
-        cmd: journalctl -xeu wetty.service
+        cmd: journalctl --no-pager --output=cat --unit=wetty.service
       changed_when: false
 
     - name: Inspect the Wetty container
