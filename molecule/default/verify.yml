@@ -20,382 +20,382 @@
   tasks:
     - name: Verify that Wetty works
       block:
-    # The role is not included in this playbook, so its defaults are not in
-    # scope. Reading defaults/main.yml directly ties the version assertion
-    # below.
-    - name: Load the role defaults
-      ansible.builtin.include_vars:
-        file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
-        name: wetty_defaults
+        # The role is not included in this playbook, so its defaults are not in
+        # scope. Reading defaults/main.yml directly ties the version assertion
+        # below.
+        - name: Load the role defaults
+          ansible.builtin.include_vars:
+            file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
+            name: wetty_defaults
 
-    - name: Wait for the Wetty systemd service to become active (up to 180s)
-      ansible.builtin.systemd_service:
-        name: wetty.service
-      register: wetty_service
-      until: wetty_service.status.ActiveState == 'active'
-      retries: 36
-      delay: 5
-      failed_when: false
+        - name: Wait for the Wetty systemd service to become active (up to 180s)
+          ansible.builtin.systemd_service:
+            name: wetty.service
+          register: wetty_service
+          until: wetty_service.status.ActiveState == 'active'
+          retries: 36
+          delay: 5
+          failed_when: false
 
-    # `Restart=always` in the systemd unit means that even a container which crashes
-    # and gets restarted reads as active here, so this is a precondition rather than
-    # a result.
-    - name: Assert the Wetty systemd service is active
-      ansible.builtin.assert:
-        that: wetty_service.status.ActiveState == 'active'
-        fail_msg: "wetty.service is not active ({{ wetty_service.status.ActiveState }})"
-        success_msg: "wetty.service is active"
+        # `Restart=always` in the systemd unit means that even a container which crashes
+        # and gets restarted reads as active here, so this is a precondition rather than
+        # a result.
+        - name: Assert the Wetty systemd service is active
+          ansible.builtin.assert:
+            that: wetty_service.status.ActiveState == 'active'
+            fail_msg: "wetty.service is not active ({{ wetty_service.status.ActiveState }})"
+            success_msg: "wetty.service is active"
 
-    - name: Retrieve the Wetty systemd service log for debugging
-      when: wetty_debug_service_enabled | bool
-      ansible.builtin.command:
-        cmd: journalctl --no-pager --output=cat --unit=wetty.service
-      changed_when: false
+        - name: Retrieve the Wetty systemd service log for debugging
+          when: wetty_debug_service_enabled | bool
+          ansible.builtin.command:
+            cmd: journalctl --no-pager --output=cat --unit=wetty.service
+          changed_when: false
 
-    - name: Inspect the Wetty container
-      ansible.builtin.command:
-        cmd: docker container inspect wetty
-      register: wetty_container_raw
-      changed_when: false
-      retries: 36
-      delay: 5
-      until: wetty_container_raw is not failed
+        - name: Inspect the Wetty container
+          ansible.builtin.command:
+            cmd: docker container inspect wetty
+          register: wetty_container_raw
+          changed_when: false
+          retries: 36
+          delay: 5
+          until: wetty_container_raw is not failed
 
-    - name: Record what the Wetty container is running
-      ansible.builtin.set_fact:
-        wetty_container: "{{ (wetty_container_raw.stdout | from_json)[0] }}"
+        - name: Record what the Wetty container is running
+          ansible.builtin.set_fact:
+            wetty_container: "{{ (wetty_container_raw.stdout | from_json)[0] }}"
 
-    # ------------------------------------------------------------------
-    # Negative controls.
-    #
-    # Wetty is an Express app, a Socket.IO connection and an SSH client. The
-    # Express half answers happily with nothing configured at all, so before
-    # asserting anything about the instance the role installed, the scenario
-    # establishes what a Wetty that was never configured looks like. Every
-    # assertion further down is chosen to be one this stock instance fails.
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Negative controls.
+        #
+        # Wetty is an Express app, a Socket.IO connection and an SSH client. The
+        # Express half answers happily with nothing configured at all, so before
+        # asserting anything about the instance the role installed, the scenario
+        # establishes what a Wetty that was never configured looks like. Every
+        # assertion further down is chosen to be one this stock instance fails.
+        # ------------------------------------------------------------------
 
-    - name: Ensure a stock, unconfigured Wetty is running for comparison
-      ansible.builtin.command:
-        cmd: >-
-          docker run -d
-          --name {{ wetty_molecule_stock_identifier }}
-          -p 127.0.0.1:{{ wetty_molecule_stock_host_bind_port }}:3000
-          {{ wetty_container.Config.Image }}
-      changed_when: true
+        - name: Ensure a stock, unconfigured Wetty is running for comparison
+          ansible.builtin.command:
+            cmd: >-
+              docker run -d
+              --name {{ wetty_molecule_stock_identifier }}
+              -p 127.0.0.1:{{ wetty_molecule_stock_host_bind_port }}:3000
+              {{ wetty_container.Config.Image }}
+          changed_when: true
 
-    # Every wait below judges nothing itself: it polls, gives up quietly, and
-    # leaves the verdict to the assertion that follows, so that a broken
-    # expectation fails at the task that states it rather than at a poll.
-    - name: Wait for the stock Wetty to serve its landing page
-      ansible.builtin.uri:
-        url: "{{ wetty_molecule_stock_base }}/"
-        method: GET
-        status_code: [200, 404]
-        follow_redirects: none
-        return_content: true
-      register: wetty_molecule_stock_root
-      until: wetty_molecule_stock_root.status == 200
-      retries: 36
-      delay: 5
-      failed_when: false
+        # Every wait below judges nothing itself: it polls, gives up quietly, and
+        # leaves the verdict to the assertion that follows, so that a broken
+        # expectation fails at the task that states it rather than at a poll.
+        - name: Wait for the stock Wetty to serve its landing page
+          ansible.builtin.uri:
+            url: "{{ wetty_molecule_stock_base }}/"
+            method: GET
+            status_code: [200, 404]
+            follow_redirects: none
+            return_content: true
+          register: wetty_molecule_stock_root
+          until: wetty_molecule_stock_root.status == 200
+          retries: 36
+          delay: 5
+          failed_when: false
 
-    - name: Assert an unconfigured Wetty still serves a landing page
-      ansible.builtin.assert:
-        that:
-          - wetty_molecule_stock_root.status == 200
-          - "'WeTTY - The Web Terminal Emulator' in (wetty_molecule_stock_root.content | default(''))"
-        fail_msg: >-
-          The stock Wetty did not serve its own landing page, so the negative
-          control this scenario relies on is not established.
-        success_msg: >-
-          A Wetty with no configuration at all answers 200 with its own
-          landing page - so "Wetty answered" proves nothing by itself.
+        - name: Assert an unconfigured Wetty still serves a landing page
+          ansible.builtin.assert:
+            that:
+              - wetty_molecule_stock_root.status == 200
+              - "'WeTTY - The Web Terminal Emulator' in (wetty_molecule_stock_root.content | default(''))"
+            fail_msg: >-
+              The stock Wetty did not serve its own landing page, so the negative
+              control this scenario relies on is not established.
+            success_msg: >-
+              A Wetty with no configuration at all answers 200 with its own
+              landing page - so "Wetty answered" proves nothing by itself.
 
-    - name: Ask the stock Wetty for the path this role serves at
-      ansible.builtin.uri:
-        url: "{{ wetty_molecule_stock_base }}{{ wetty_path_prefix }}"
-        method: GET
-        status_code: [200, 404]
-        follow_redirects: none
-      register: wetty_molecule_stock_prefix
-      failed_when: false
+        - name: Ask the stock Wetty for the path this role serves at
+          ansible.builtin.uri:
+            url: "{{ wetty_molecule_stock_base }}{{ wetty_path_prefix }}"
+            method: GET
+            status_code: [200, 404]
+            follow_redirects: none
+          register: wetty_molecule_stock_prefix
+          failed_when: false
 
-    - name: Assert an unconfigured Wetty does not serve the role's path prefix
-      ansible.builtin.assert:
-        that: wetty_molecule_stock_prefix.status == 404
-        fail_msg: >-
-          The stock Wetty served {{ wetty_path_prefix }}, so asking the role's
-          instance for that path would not prove that BASE reached it.
-        success_msg: >-
-          The stock Wetty 404s on {{ wetty_path_prefix }}, so serving it is
-          something only a configured Wetty does.
+        - name: Assert an unconfigured Wetty does not serve the role's path prefix
+          ansible.builtin.assert:
+            that: wetty_molecule_stock_prefix.status == 404
+            fail_msg: >-
+              The stock Wetty served {{ wetty_path_prefix }}, so asking the role's
+              instance for that path would not prove that BASE reached it.
+            success_msg: >-
+              The stock Wetty 404s on {{ wetty_path_prefix }}, so serving it is
+              something only a configured Wetty does.
 
-    # The strongest negative control: the very probe used below, pointed at
-    # the unconfigured instance. It must not be able to reach a shell there.
-    # An unconfigured Wetty falls back to SSHHOST=localhost, which - because
-    # the image runs as root - makes it skip SSH altogether and offer a
-    # container-local `login:` prompt that no account can satisfy.
-    - name: Run the terminal probe against the stock Wetty
-      ansible.builtin.script:
-        cmd: >-
-          files/wetty-terminal-probe.py
-          --url {{ (wetty_molecule_stock_base ~ "/") | quote }}
-          --user {{ wetty_molecule_ssh_username | quote }}
-          --password {{ wetty_molecule_ssh_password | quote }}
-          --command 'id -un'
-          --expect {{ wetty_molecule_ssh_username | quote }}
-          --timeout 45
-        executable: python3
-      register: wetty_molecule_stock_probe
-      changed_when: false
-      failed_when: false
+        # The strongest negative control: the very probe used below, pointed at
+        # the unconfigured instance. It must not be able to reach a shell there.
+        # An unconfigured Wetty falls back to SSHHOST=localhost, which - because
+        # the image runs as root - makes it skip SSH altogether and offer a
+        # container-local `login:` prompt that no account can satisfy.
+        - name: Run the terminal probe against the stock Wetty
+          ansible.builtin.script:
+            cmd: >-
+              files/wetty-terminal-probe.py
+              --url {{ (wetty_molecule_stock_base ~ "/") | quote }}
+              --user {{ wetty_molecule_ssh_username | quote }}
+              --password {{ wetty_molecule_ssh_password | quote }}
+              --command 'id -un'
+              --expect {{ wetty_molecule_ssh_username | quote }}
+              --timeout 45
+            executable: python3
+          register: wetty_molecule_stock_probe
+          changed_when: false
+          failed_when: false
 
-    - name: Assert the stock Wetty's terminal cannot be logged in to
-      ansible.builtin.assert:
-        that: wetty_molecule_stock_probe.rc != 0
-        fail_msg: >-
-          The terminal probe reached a shell on a Wetty that was never
-          configured. Either the probe is not proving what it claims, or this
-          image now offers an unauthenticated shell.
-        success_msg: >-
-          The terminal probe cannot reach a shell on an unconfigured Wetty,
-          so reaching one on the role's instance means something.
+        - name: Assert the stock Wetty's terminal cannot be logged in to
+          ansible.builtin.assert:
+            that: wetty_molecule_stock_probe.rc != 0
+            fail_msg: >-
+              The terminal probe reached a shell on a Wetty that was never
+              configured. Either the probe is not proving what it claims, or this
+              image now offers an unauthenticated shell.
+            success_msg: >-
+              The terminal probe cannot reach a shell on an unconfigured Wetty,
+              so reaching one on the role's instance means something.
 
-    - name: Remove the stock Wetty
-      ansible.builtin.command:
-        cmd: "docker rm -f {{ wetty_molecule_stock_identifier }}"
-      changed_when: true
+        - name: Remove the stock Wetty
+          ansible.builtin.command:
+            cmd: "docker rm -f {{ wetty_molecule_stock_identifier }}"
+          changed_when: true
 
-    # ------------------------------------------------------------------
-    # The instance the role installed.
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # The instance the role installed.
+        # ------------------------------------------------------------------
 
-    - name: Wait for Wetty to serve its page at the configured path prefix
-      ansible.builtin.uri:
-        url: "{{ wetty_molecule_url }}"
-        method: GET
-        status_code: [200, 404]
-        follow_redirects: none
-        return_content: true
-      register: wetty_molecule_page
-      until: wetty_molecule_page.status == 200
-      retries: 36
-      delay: 5
-      failed_when: false
+        - name: Wait for Wetty to serve its page at the configured path prefix
+          ansible.builtin.uri:
+            url: "{{ wetty_molecule_url }}"
+            method: GET
+            status_code: [200, 404]
+            follow_redirects: none
+            return_content: true
+          register: wetty_molecule_page
+          until: wetty_molecule_page.status == 200
+          retries: 36
+          delay: 5
+          failed_when: false
 
-    - name: Ask Wetty for the path it is not configured to serve
-      ansible.builtin.uri:
-        url: "http://127.0.0.1:3000/"
-        method: GET
-        status_code: [200, 404]
-        follow_redirects: none
-      register: wetty_molecule_unconfigured_path
-      failed_when: false
+        - name: Ask Wetty for the path it is not configured to serve
+          ansible.builtin.uri:
+            url: "http://127.0.0.1:3000/"
+            method: GET
+            status_code: [200, 404]
+            follow_redirects: none
+          register: wetty_molecule_unconfigured_path
+          failed_when: false
 
-    # Asserted in both directions on purpose. A Wetty whose BASE never arrived
-    # answers at `/` and 404s at `{{ wetty_path_prefix }}`; this one has to do
-    # the exact opposite, which no default can produce.
-    - name: Assert the configured path prefix reached Wetty
-      ansible.builtin.assert:
-        that:
-          - wetty_molecule_page.status == 200
-          - wetty_molecule_unconfigured_path.status == 404
-        fail_msg: >-
-          Wetty answered {{ wetty_molecule_page.status }} at
-          {{ wetty_path_prefix }} and
-          {{ wetty_molecule_unconfigured_path.status }} at `/`, which is not
-          what `wetty_path_prefix` being honored looks like.
-        success_msg: >-
-          Wetty serves {{ wetty_path_prefix }} and 404s at `/`, so BASE
-          reached the process.
+        # Asserted in both directions on purpose. A Wetty whose BASE never arrived
+        # answers at `/` and 404s at `{{ wetty_path_prefix }}`; this one has to do
+        # the exact opposite, which no default can produce.
+        - name: Assert the configured path prefix reached Wetty
+          ansible.builtin.assert:
+            that:
+              - wetty_molecule_page.status == 200
+              - wetty_molecule_unconfigured_path.status == 404
+            fail_msg: >-
+              Wetty answered {{ wetty_molecule_page.status }} at
+              {{ wetty_path_prefix }} and
+              {{ wetty_molecule_unconfigured_path.status }} at `/`, which is not
+              what `wetty_path_prefix` being honored looks like.
+            success_msg: >-
+              Wetty serves {{ wetty_path_prefix }} and 404s at `/`, so BASE
+              reached the process.
 
-    # TITLE has no dedicated variable in this role; it can only have arrived
-    # through `wetty_environment_variables_additional_variables`.
-    - name: Assert extra environment variables reached Wetty
-      ansible.builtin.assert:
-        that:
-          - "'<title>MASH Molecule Wetty</title>' in (wetty_molecule_page.content | default(''))"
-          - "'WeTTY - The Web Terminal Emulator' not in (wetty_molecule_page.content | default(''))"
-        fail_msg: >-
-          Wetty is rendering a title this scenario did not set, so
-          `wetty_environment_variables_additional_variables` did not reach the
-          container.
-        success_msg: >-
-          Wetty renders the title set through
-          `wetty_environment_variables_additional_variables`.
+        # TITLE has no dedicated variable in this role; it can only have arrived
+        # through `wetty_environment_variables_additional_variables`.
+        - name: Assert extra environment variables reached Wetty
+          ansible.builtin.assert:
+            that:
+              - "'<title>MASH Molecule Wetty</title>' in (wetty_molecule_page.content | default(''))"
+              - "'WeTTY - The Web Terminal Emulator' not in (wetty_molecule_page.content | default(''))"
+            fail_msg: >-
+              Wetty is rendering a title this scenario did not set, so
+              `wetty_environment_variables_additional_variables` did not reach the
+              container.
+            success_msg: >-
+              Wetty renders the title set through
+              `wetty_environment_variables_additional_variables`.
 
-    # ------------------------------------------------------------------
-    # The version that is actually running.
-    #
-    # This is what a patch-level automerge would be riding on: Renovate edits
-    # `wetty_version` in defaults/main.yml and nothing else, so the scenario
-    # has to show that the edit is what determines the running code.
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # The version that is actually running.
+        #
+        # This is what a patch-level automerge would be riding on: Renovate edits
+        # `wetty_version` in defaults/main.yml and nothing else, so the scenario
+        # has to show that the edit is what determines the running code.
+        # ------------------------------------------------------------------
 
-    - name: Read the version reported from inside the running Wetty
-      ansible.builtin.command:
-        cmd: >-
-          docker exec wetty node -p
-          "require('/usr/src/app/package.json').version"
-      register: wetty_molecule_package_version
-      changed_when: false
-      failed_when: false
+        - name: Read the version reported from inside the running Wetty
+          ansible.builtin.command:
+            cmd: >-
+              docker exec wetty node -p
+              "require('/usr/src/app/package.json').version"
+          register: wetty_molecule_package_version
+          changed_when: false
+          failed_when: false
 
-    - name: Assert the running Wetty is the version this role installs
-      ansible.builtin.assert:
-        that:
-          - wetty_container.Config.Image == 'ghcr.io/butlerx/wetty:' ~ wetty_defaults.wetty_version
-          - wetty_container.Config.Labels['org.opencontainers.image.version'] == wetty_defaults.wetty_version
-          - (wetty_molecule_package_version.stdout | default('')) | trim == wetty_defaults.wetty_version
-        fail_msg: "Wetty reports {{ (wetty_molecule_package_version.stdout | default('none')) | trim }}, expected {{ wetty_defaults.wetty_version }}"
-        success_msg: "Wetty reports {{ wetty_molecule_package_version.stdout | trim }}"
+        - name: Assert the running Wetty is the version this role installs
+          ansible.builtin.assert:
+            that:
+              - wetty_container.Config.Image == 'ghcr.io/butlerx/wetty:' ~ wetty_defaults.wetty_version
+              - wetty_container.Config.Labels['org.opencontainers.image.version'] == wetty_defaults.wetty_version
+              - (wetty_molecule_package_version.stdout | default('')) | trim == wetty_defaults.wetty_version
+            fail_msg: "Wetty reports {{ (wetty_molecule_package_version.stdout | default('none')) | trim }}, expected {{ wetty_defaults.wetty_version }}"
+            success_msg: "Wetty reports {{ wetty_molecule_package_version.stdout | trim }}"
 
-    # ------------------------------------------------------------------
-    # The whole chain, end to end.
-    #
-    # A browser reaches a shell through Wetty over a Socket.IO WebSocket, and
-    # that connection is where the SSH half of Wetty lives. The probe opens
-    # that WebSocket, answers Wetty's own username prompt, answers the SSH
-    # daemon's password prompt, runs a command and reads its output back. It
-    # passes only if the web layer, the WebSocket and the SSH leg all work,
-    # and only if SSHHOST and SSHPORT both arrived - nothing listens on the
-    # port Wetty would have fallen back to.
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # The whole chain, end to end.
+        #
+        # A browser reaches a shell through Wetty over a Socket.IO WebSocket, and
+        # that connection is where the SSH half of Wetty lives. The probe opens
+        # that WebSocket, answers Wetty's own username prompt, answers the SSH
+        # daemon's password prompt, runs a command and reads its output back. It
+        # passes only if the web layer, the WebSocket and the SSH leg all work,
+        # and only if SSHHOST and SSHPORT both arrived - nothing listens on the
+        # port Wetty would have fallen back to.
+        # ------------------------------------------------------------------
 
-    - name: Run a command through Wetty's terminal over SSH
-      ansible.builtin.script:
-        cmd: >-
-          files/wetty-terminal-probe.py
-          --url {{ wetty_molecule_url | quote }}
-          --user {{ wetty_molecule_ssh_username | quote }}
-          --password {{ wetty_molecule_ssh_password | quote }}
-          --command 'id -un; hostname'
-          --expect {{ wetty_molecule_sshd_identifier | quote }}
-          --timeout 90
-        executable: python3
-      register: wetty_molecule_probe
-      changed_when: false
-      failed_when: false
+        - name: Run a command through Wetty's terminal over SSH
+          ansible.builtin.script:
+            cmd: >-
+              files/wetty-terminal-probe.py
+              --url {{ wetty_molecule_url | quote }}
+              --user {{ wetty_molecule_ssh_username | quote }}
+              --password {{ wetty_molecule_ssh_password | quote }}
+              --command 'id -un; hostname'
+              --expect {{ wetty_molecule_sshd_identifier | quote }}
+              --timeout 90
+            executable: python3
+          register: wetty_molecule_probe
+          changed_when: false
+          failed_when: false
 
-    - name: Assert the terminal reached the configured SSH host
-      ansible.builtin.assert:
-        that: wetty_molecule_probe.rc == 0
-        fail_msg: "The terminal probe did not reach a shell on {{ wetty_molecule_sshd_identifier }}"
-        success_msg: >-
-          A command ran on {{ wetty_molecule_sshd_identifier }} through
-          Wetty's terminal and its output came back.
+        - name: Assert the terminal reached the configured SSH host
+          ansible.builtin.assert:
+            that: wetty_molecule_probe.rc == 0
+            fail_msg: "The terminal probe did not reach a shell on {{ wetty_molecule_sshd_identifier }}"
+            success_msg: >-
+              A command ran on {{ wetty_molecule_sshd_identifier }} through
+              Wetty's terminal and its output came back.
 
-    # ------------------------------------------------------------------
-    # Through Traefik.
-    #
-    # How a reverse proxy has to forward a path prefix is a property of the
-    # application behind it, and getting it wrong is invisible until someone
-    # loads the page: Wetty is told its prefix through BASE and serves
-    # everything underneath it, so a proxy that strips the prefix leaves it
-    # looking for `/`, where it serves nothing, and the whole service answers
-    # 404. Nothing about the labels themselves says which of the two it is,
-    # so a real Traefik configured by nothing but those labels is asked.
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Through Traefik.
+        #
+        # How a reverse proxy has to forward a path prefix is a property of the
+        # application behind it, and getting it wrong is invisible until someone
+        # loads the page: Wetty is told its prefix through BASE and serves
+        # everything underneath it, so a proxy that strips the prefix leaves it
+        # looking for `/`, where it serves nothing, and the whole service answers
+        # 404. Nothing about the labels themselves says which of the two it is,
+        # so a real Traefik configured by nothing but those labels is asked.
+        # ------------------------------------------------------------------
 
-    - name: Wait for Traefik to route Wetty at the configured path prefix
-      ansible.builtin.uri:
-        url: "{{ wetty_molecule_traefik_url }}"
-        method: GET
-        status_code: [200, 404, 502]
-        follow_redirects: none
-        return_content: true
-      register: wetty_molecule_traefik_page
-      until: wetty_molecule_traefik_page.status == 200
-      retries: 24
-      delay: 5
-      failed_when: false
+        - name: Wait for Traefik to route Wetty at the configured path prefix
+          ansible.builtin.uri:
+            url: "{{ wetty_molecule_traefik_url }}"
+            method: GET
+            status_code: [200, 404, 502]
+            follow_redirects: none
+            return_content: true
+          register: wetty_molecule_traefik_page
+          until: wetty_molecule_traefik_page.status == 200
+          retries: 24
+          delay: 5
+          failed_when: false
 
-    - name: Ask Traefik for one of Wetty's assets
-      ansible.builtin.uri:
-        url: "{{ wetty_molecule_traefik_url }}/client/wetty.css"
-        method: GET
-        status_code: [200, 404, 502]
-        follow_redirects: none
-      register: wetty_molecule_traefik_asset
-      failed_when: false
+        - name: Ask Traefik for one of Wetty's assets
+          ansible.builtin.uri:
+            url: "{{ wetty_molecule_traefik_url }}/client/wetty.css"
+            method: GET
+            status_code: [200, 404, 502]
+            follow_redirects: none
+          register: wetty_molecule_traefik_asset
+          failed_when: false
 
-    - name: Assert Traefik serves Wetty under its path prefix
-      ansible.builtin.assert:
-        that:
-          - wetty_molecule_traefik_page.status == 200
-          - "'<title>MASH Molecule Wetty</title>' in (wetty_molecule_traefik_page.content | default(''))"
-          - wetty_molecule_traefik_asset.status == 200
-        fail_msg: >-
-          Traefik answered {{ wetty_molecule_traefik_page.status }} for the
-          page and {{ wetty_molecule_traefik_asset.status }} for an asset
-          under {{ wetty_path_prefix }}. The labels the role attaches are
-          rewriting the request path into something Wetty does not serve.
-        success_msg: >-
-          Traefik forwards {{ wetty_path_prefix }} to Wetty unchanged, and
-          both the page and its assets come back.
+        - name: Assert Traefik serves Wetty under its path prefix
+          ansible.builtin.assert:
+            that:
+              - wetty_molecule_traefik_page.status == 200
+              - "'<title>MASH Molecule Wetty</title>' in (wetty_molecule_traefik_page.content | default(''))"
+              - wetty_molecule_traefik_asset.status == 200
+            fail_msg: >-
+              Traefik answered {{ wetty_molecule_traefik_page.status }} for the
+              page and {{ wetty_molecule_traefik_asset.status }} for an asset
+              under {{ wetty_path_prefix }}. The labels the role attaches are
+              rewriting the request path into something Wetty does not serve.
+            success_msg: >-
+              Traefik forwards {{ wetty_path_prefix }} to Wetty unchanged, and
+              both the page and its assets come back.
 
-    # The terminal again, this time through the reverse proxy - which is where
-    # the WebSocket upgrade and the Socket.IO path under the prefix have to
-    # survive as well as the page does.
-    - name: Run a command through Wetty's terminal via Traefik
-      ansible.builtin.script:
-        cmd: >-
-          files/wetty-terminal-probe.py
-          --url {{ wetty_molecule_traefik_url | quote }}
-          --user {{ wetty_molecule_ssh_username | quote }}
-          --password {{ wetty_molecule_ssh_password | quote }}
-          --command 'id -un; hostname'
-          --expect {{ wetty_molecule_sshd_identifier | quote }}
-          --timeout 90
-        executable: python3
-      register: wetty_molecule_traefik_probe
-      changed_when: false
-      failed_when: false
+        # The terminal again, this time through the reverse proxy - which is where
+        # the WebSocket upgrade and the Socket.IO path under the prefix have to
+        # survive as well as the page does.
+        - name: Run a command through Wetty's terminal via Traefik
+          ansible.builtin.script:
+            cmd: >-
+              files/wetty-terminal-probe.py
+              --url {{ wetty_molecule_traefik_url | quote }}
+              --user {{ wetty_molecule_ssh_username | quote }}
+              --password {{ wetty_molecule_ssh_password | quote }}
+              --command 'id -un; hostname'
+              --expect {{ wetty_molecule_sshd_identifier | quote }}
+              --timeout 90
+            executable: python3
+          register: wetty_molecule_traefik_probe
+          changed_when: false
+          failed_when: false
 
-    - name: Assert the terminal works through Traefik
-      ansible.builtin.assert:
-        that: wetty_molecule_traefik_probe.rc == 0
-        fail_msg: >-
-          A command could not be run through Wetty's terminal via Traefik,
-          even though it works on the published port - so the WebSocket does
-          not survive the reverse proxy the role's labels describe.
-        success_msg: >-
-          A command ran on {{ wetty_molecule_sshd_identifier }} through
-          Wetty's terminal via Traefik.
+        - name: Assert the terminal works through Traefik
+          ansible.builtin.assert:
+            that: wetty_molecule_traefik_probe.rc == 0
+            fail_msg: >-
+              A command could not be run through Wetty's terminal via Traefik,
+              even though it works on the published port - so the WebSocket does
+              not survive the reverse proxy the role's labels describe.
+            success_msg: >-
+              A command ran on {{ wetty_molecule_sshd_identifier }} through
+              Wetty's terminal via Traefik.
 
-    # ------------------------------------------------------------------
-    # `Restart=always` means the unit reads `active` even while the container
-    # is crash-looping, so the unit's own restart counter is what settles it,
-    # checked after everything else has had time to provoke a crash.
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # `Restart=always` means the unit reads `active` even while the container
+        # is crash-looping, so the unit's own restart counter is what settles it,
+        # checked after everything else has had time to provoke a crash.
+        # ------------------------------------------------------------------
 
-    - name: Read how many times Wetty has been restarted
-      ansible.builtin.systemd_service:
-        name: wetty.service
-      register: wetty_molecule_final_state
-      changed_when: false
+        - name: Read how many times Wetty has been restarted
+          ansible.builtin.systemd_service:
+            name: wetty.service
+          register: wetty_molecule_final_state
+          changed_when: false
 
-    - name: Assert Wetty has not been restarting behind an active unit
-      ansible.builtin.assert:
-        that:
-          - wetty_molecule_final_state.status.ActiveState == 'active'
-          - wetty_molecule_final_state.status.NRestarts | int == 0
-        fail_msg: >-
-          wetty.service is
-          {{ wetty_molecule_final_state.status.ActiveState }} after
-          {{ wetty_molecule_final_state.status.NRestarts }} restart(s), so it
-          is crash-looping behind a unit that reports itself active.
-        success_msg: "wetty.service has been up without a restart throughout."
+        - name: Assert Wetty has not been restarting behind an active unit
+          ansible.builtin.assert:
+            that:
+              - wetty_molecule_final_state.status.ActiveState == 'active'
+              - wetty_molecule_final_state.status.NRestarts | int == 0
+            fail_msg: >-
+              wetty.service is
+              {{ wetty_molecule_final_state.status.ActiveState }} after
+              {{ wetty_molecule_final_state.status.NRestarts }} restart(s), so it
+              is crash-looping behind a unit that reports itself active.
+            success_msg: "wetty.service has been up without a restart throughout."
 
-    - name: Show the Wetty verification summary
-      ansible.builtin.debug:
-        msg:
-          - "Wetty systemd: {{ wetty_molecule_final_state.status.ActiveState }}, restarts: {{ wetty_molecule_final_state.status.NRestarts }}"
-          - "Wetty version: {{ (wetty_molecule_package_version.stdout | default('')) | trim }}"
-          - "Wetty served at {{ wetty_path_prefix }}, 404 at /"
-          - "Wetty terminal: {{ (wetty_molecule_probe.stdout | default('')) | trim }}"
-          - "Wetty through Traefik: {{ (wetty_molecule_traefik_probe.stdout | default('')) | trim }}"
+        - name: Show the Wetty verification summary
+          ansible.builtin.debug:
+            msg:
+              - "Wetty systemd: {{ wetty_molecule_final_state.status.ActiveState }}, restarts: {{ wetty_molecule_final_state.status.NRestarts }}"
+              - "Wetty version: {{ (wetty_molecule_package_version.stdout | default('')) | trim }}"
+              - "Wetty served at {{ wetty_path_prefix }}, 404 at /"
+              - "Wetty terminal: {{ (wetty_molecule_probe.stdout | default('')) | trim }}"
+              - "Wetty through Traefik: {{ (wetty_molecule_traefik_probe.stdout | default('')) | trim }}"
 
       rescue:
         # Whatever went wrong, the reason is almost always in the systemd service log.
