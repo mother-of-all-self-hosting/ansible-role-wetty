@@ -18,6 +18,8 @@
     wetty_molecule_stock_base: "http://127.0.0.1:{{ wetty_molecule_stock_host_bind_port }}"
 
   tasks:
+    - name: Verify that Wetty works
+      block:
     # The role is not included in this playbook, so its defaults are not in
     # scope. Reading defaults/main.yml directly ties the version assertion
     # below.
@@ -394,3 +396,19 @@
           - "Wetty served at {{ wetty_path_prefix }}, 404 at /"
           - "Wetty terminal: {{ (wetty_molecule_probe.stdout | default('')) | trim }}"
           - "Wetty through Traefik: {{ (wetty_molecule_traefik_probe.stdout | default('')) | trim }}"
+
+      rescue:
+        # Whatever went wrong, the reason is almost always in the systemd service log.
+        - name: Retrieve the Wetty systemd service log
+          ansible.builtin.command:
+            cmd: journalctl --no-pager --output=cat --unit=wetty.service
+          register: wetty_service_log
+          changed_when: false
+
+        - name: Show the Wetty systemd service log
+          ansible.builtin.debug:
+            var: wetty_service_log.stdout_lines
+
+        - name: Fail because verification did not pass
+          ansible.builtin.fail:
+            msg: "Wetty verification failed. The systemd service log is printed above."
