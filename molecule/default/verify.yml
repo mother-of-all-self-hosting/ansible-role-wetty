@@ -17,6 +17,9 @@
     wetty_molecule_traefik_url: "http://{{ wetty_hostname }}:{{ wetty_molecule_traefik_host_bind_port }}{{ wetty_path_prefix }}"
     wetty_molecule_stock_base: "http://127.0.0.1:{{ wetty_molecule_stock_host_bind_port }}"
 
+    wetty_verify_units:
+      - wetty.service
+
   tasks:
     - name: Verify that Wetty works
       block:
@@ -28,29 +31,35 @@
             file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
             name: wetty_defaults
 
-        - name: Wait for the Wetty systemd service to become active (up to 180s)
+        - name: Wait for the wetty systemd services to become active (up to 180s each)
           ansible.builtin.systemd_service:
-            name: wetty.service
-          register: wetty_service
-          until: wetty_service.status.ActiveState == 'active'
+            name: "{{ item }}"
+          register: wetty_services
+          until: wetty_services.status.ActiveState == 'active'
           retries: 36
           delay: 5
+          loop: "{{ wetty_verify_units }}"
+          # So that giving up is reported by the assertion below rather than as a
+          # wall of systemd unit properties.
           failed_when: false
 
         # `Restart=always` in the systemd unit means that even a container which crashes
         # and gets restarted reads as active here, so this is a precondition rather than
         # a result.
-        - name: Assert the Wetty systemd service is active
+        - name: Assert the wetty systemd services are active
           ansible.builtin.assert:
-            that: wetty_service.status.ActiveState == 'active'
-            fail_msg: "wetty.service is not active ({{ wetty_service.status.ActiveState }})"
-            success_msg: "wetty.service is active"
+            that: wetty_services.results | map(attribute='status.ActiveState') | unique | list == ['active']
+            fail_msg: >-
+              Not every service is active:
+              {{ dict(wetty_verify_units | zip(wetty_services.results | map(attribute='status.ActiveState'))) }}
+            success_msg: "Every systemd service is active"
 
-        - name: Retrieve the Wetty systemd service log for debugging
+        - name: Retrieve the wetty systemd services log for debugging
           when: wetty_debug_service_enabled | bool
           ansible.builtin.command:
-            cmd: journalctl --no-pager --output=cat --unit=wetty.service
+            cmd: "journalctl --no-pager --output=cat --unit={{ item }}"
           changed_when: false
+          loop: "{{ wetty_verify_units }}"
 
         - name: Inspect the Wetty container
           ansible.builtin.command:
