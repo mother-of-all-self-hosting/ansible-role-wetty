@@ -81,7 +81,7 @@ wetty_environment_variables_ssh_port: 222
 
 ### Configuring HTTP Basic authentication
 
-Wetty is, by construction, a web page that opens a shell. Since there does not exist an authentication system on the web interface, this role is configured to enable the HTTP Basic authentication on Traefik by default, considering the nature of the service. See [this page](https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/basicauth/) on the Traefik's documentation for details.
+Wetty is, by construction, a web page that opens a shell. Since there does not exist an authentication system on the web interface, this role is configured to enable the HTTP Basic authentication on Traefik by default, considering the nature of the service. Refer to [this page](https://doc.traefik.io/traefik/reference/routing-configuration/http/middlewares/basicauth/) on the Traefik's documentation for details.
 
 You can use `htpasswd` to generate the user and password pair, which needs to be set to `mailcatcher_container_labels_traefik_middleware_basic_auth_users`.
 
