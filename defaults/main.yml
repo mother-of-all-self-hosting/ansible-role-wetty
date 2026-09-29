@@ -111,6 +111,9 @@ wetty_container_labels_traefik_additional_response_headers_custom: {}
 #   another.label="here"
 wetty_container_labels_additional_labels: ""
 
+# Specify the size of the container's tmpfs volume (/run)
+wetty_container_tmpfs_tmp_size: 128m
+
 # A list of extra arguments to pass to the container (`docker create` command)
 wetty_container_extra_arguments: "{{ wetty_container_extra_arguments_auto + wetty_container_extra_arguments_custom }}"
 wetty_container_extra_arguments_auto: []
