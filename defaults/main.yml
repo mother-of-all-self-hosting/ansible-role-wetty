@@ -104,12 +104,15 @@ wetty_container_labels_traefik_additional_response_headers_custom: {}
 
 # wetty_container_labels_additional_labels contains a multiline string with additional labels to add to the container label file.
 # See `../templates/labels.j2` for details.
+# To add your own custom labels, use `wetty_container_labels_additional_labels_custom`
 #
 # Example:
-# wetty_container_labels_additional_labels: |
-#   my.label=1
-#   another.label="here"
-wetty_container_labels_additional_labels: ""
+# wetty_container_labels_additional_labels_custom:
+#   - my.label=1
+#   - another.label="here"
+wetty_container_labels_additional_labels: "{{ wetty_container_labels_additional_labels_auto + wetty_container_labels_additional_labels_custom }}"
+wetty_container_labels_additional_labels_auto: []
+wetty_container_labels_additional_labels_custom: []
 
 # Specify the size of the container's tmpfs volume (/run)
 wetty_container_tmpfs_tmp_size: 128m

@@ -33,6 +33,13 @@
 - name: Run if Traefik is enabled
   when: wetty_container_labels_traefik_enabled | bool
   block:
+    - name: (Deprecation) Catch and report Wetty labels for Traefik in the old string format
+      ansible.builtin.fail:
+        msg: >-
+          `wetty_container_labels_additional_labels` now require a list of strings.
+          Replace `wetty_container_labels_additional_labels: |` with `wetty_container_labels_additional_labels_custom:` and make each label a list item.
+      when: "wetty_container_labels_additional_labels | default([]) is string"
+
     - name: Fail if Traefik settings required for Wetty are not defined
       ansible.builtin.fail:
         msg: >-

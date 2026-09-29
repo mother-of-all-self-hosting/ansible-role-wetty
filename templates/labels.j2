@@ -64,4 +64,6 @@ traefik.http.routers.{{ wetty_identifier }}.tls.certResolver={{ wetty_container_
 traefik.http.services.{{ wetty_identifier }}.loadbalancer.server.port={{ wetty_container_http_port }}
 {% endif %}
 
-{{ wetty_container_labels_additional_labels }}
+{% for arg in wetty_container_labels_additional_labels %}
+{{ arg }}
+{% endfor %}
