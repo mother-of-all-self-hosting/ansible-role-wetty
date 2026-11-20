@@ -25,9 +25,6 @@
   with_items:
     - wetty_uid
     - wetty_gid
-    - wetty_hostname
-    - wetty_path_prefix
-    - wetty_container_network
     - wetty_environment_variables_ssh_host
 
 - name: Run if Traefik is enabled
